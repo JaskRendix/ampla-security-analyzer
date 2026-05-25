@@ -1,0 +1,54 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# pytest cache
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Local working outputs
+working/
+normalized_project.xml
+normalized_project_phase_d.xml
+security_report.html
+test_report.html
+
+# Golden outputs (generated)
+golden/*.json
+
+# XML outputs generated during testing
+python_project_normalized.xml
+python_authstore_normalized.xml
+python_security_report.html
+xslt_project_normalized.xml
+xslt_authstore_normalized.xml
+xslt_project_security.xml
+xslt_security_report.html
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

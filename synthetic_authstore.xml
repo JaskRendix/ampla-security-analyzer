@@ -1,0 +1,15 @@
+<AzAdminManager>
+  <AzApplication Name="TestApp">
+    <Role roleId="role-guid-2" name="Viewer">
+      <Member>S-1-5-32-544</Member>
+    </Role>
+    <Role roleId="role-guid-3" name="NoMembers"/>
+    <Role roleId="role-guid-4" name="UnknownMember">
+      <Member>unknown-sid</Member>
+    </Role>
+    <Role roleId="role-guid-5" name="InvalidMember">
+      <Member></Member>
+    </Role>
+    <AzScope Name="scope-1" Description="Security scope for ValidScopeItem"/>
+  </AzApplication>
+</AzAdminManager>

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Ampla name="PhaseD_TestProject">
+  <Reference id="ref1" name="Citect.Ampla.StandardItems" version="4.4"/>
+  <Reference id="ref2" name="Citect.Ampla.General.Server" version="4.4"/>
+  <Reference id="ref3" name="Citect.Ampla.Metrics.Server" version="4.4"/>
+  <Reference id="ref4" name="Citect.Ampla.Production.Server" version="4.4"/>
+  
+  <!-- Test 1: CycleManager with Cycles property -->
+  <Item id="cycle-mgr-1" name="BolstingCycleManager" type="Citect.Ampla.General.Server.RecordStates.CycleManager">
+    <Property name="Cycles">
+      <Item>Cycle1</Item>
+      <Item>Cycle2</Item>
+      <Item>Cycle3</Item>
+    </Property>
+  </Item>
+  
+  <!-- Test 2: Resolver with default properties -->
+  <Item id="resolver-1" name="MetricsResolver1" type="Citect.Ampla.Metrics.Server.Resolvers.Resolver">
+    <Property name="Name">TestResolver</Property>
+    <!-- Action and ResolverOperation should be added by normalizer -->
+  </Item>
+  
+  <!-- Test 3: Resolver with existing properties -->
+  <Item id="resolver-2" name="MetricsResolver2" type="Citect.Ampla.Metrics.Server.Resolvers.Resolver">
+    <Property name="Name">TestResolver2</Property>
+    <Property name="Action">Custom</Property>
+    <Property name="ResolverOperation">Average</Property>
+  </Item>
+  
+  <!-- Test 4: Historical Field Expression with empty format -->
+  <Item id="field-1" name="ProductionField" type="Citect.Ampla.Production.Server.ProductionFieldDefinition">
+    <Property name="CaptureValueForManualRecords">True</Property>
+    <Property name="HistoricalFieldExpression" valueIsXml="True">
+      <HistoricalExpressionConfig>
+        <ExpressionConfig format="" compileAction="Compile"/>
+        <DependencyCollection/>
+      </HistoricalExpressionConfig>
+    </Property>
+    <Property name="RefreshOnManualEntry">True</Property>
+  </Item>
+  
+  <!-- Test 5: Historical Field Expression with only one condition true -->
+  <Item id="field-2" name="ProductionField2" type="Citect.Ampla.Production.Server.ProductionFieldDefinition">
+    <Property name="CaptureValueForManualRecords">True</Property>
+    <Property name="HistoricalFieldExpression" valueIsXml="True">
+      <HistoricalExpressionConfig>
+        <ExpressionConfig format="" compileAction="Compile"/>
+        <DependencyCollection/>
+      </HistoricalExpressionConfig>
+    </Property>
+    <Property name="RefreshOnManualEntry">False</Property>
+  </Item>
+  
+  <!-- Test 6: User item with Home property -->
+  <Item id="user-1" name="TestUser" type="Citect.Ampla.StandardItems.User">
+    <Property name="Home">
+      <Property dictionary="true" type="Citect.Ampla.General.Common.FavoriteDescriptorCollection,Citect.Ampla.General.Common" keytype="string">
+        <Item key="Home1" type="Citect.Ampla.General.Common.FavoriteDescriptor,Citect.Ampla.General.Common">
+          <Property name="Name">Home Item 1</Property>
+          <Property name="Location">/Location1</Property>
+          <Property name="LocationType">Home</Property>
+          <Property name="Module">Production</Property>
+        </Item>
+        <Item key="Home2" type="Citect.Ampla.General.Common.FavoriteDescriptor,Citect.Ampla.General.Common">
+          <Property name="Name">Home Item 2</Property>
+          <Property name="Location">/Location2</Property>
+          <Property name="LocationType">Home</Property>
+          <Property name="Module">Production</Property>
+        </Item>
+      </Property>
+    </Property>
+  </Item>
+  
+  <!-- Test 7: User item with Favorites property -->
+  <Item id="user-2" name="TestUser2" type="Citect.Ampla.StandardItems.User">
+    <Property name="Favorites">
+      <Property dictionary="true" type="Citect.Ampla.General.Common.FavoriteDescriptorCollection,Citect.Ampla.General.Common" keytype="string">
+        <Item key="Fav1" type="Citect.Ampla.General.Common.FavoriteDescriptor,Citect.Ampla.General.Common">
+          <Property name="Name">Favorite 1</Property>
+          <Property name="Location">/Location1</Property>
+          <Property name="LocationType">Favorite</Property>
+          <Property name="Module">Production</Property>
+        </Item>
+        <Item key="Fav2" type="Citect.Ampla.General.Common.FavoriteDescriptor,Citect.Ampla.General.Common">
+          <Property name="Name">Favorite 2</Property>
+          <Property name="Location">/Location2</Property>
+          <Property name="LocationType">Favorite</Property>
+          <Property name="Module">Downtime</Property>
+        </Item>
+        <Item key="Corrupt" type="Citect.Ampla.General.Common.FavoriteDescriptor,Citect.Ampla.General.Common">
+          <Property name="Name">Corrupt Item</Property>
+          <Property name="Location">/Location3</Property>
+          <Property name="LocationType">Invalid</Property>
+          <Property name="Module">Production</Property>
+        </Item>
+      </Property>
+    </Property>
+  </Item>
+  
+  <!-- Test 8: User item with empty Favorites -->
+  <Item id="user-3" name="TestUser3" type="Citect.Ampla.StandardItems.User">
+    <Property name="Favorites">
+      <Property dictionary="true" type="Citect.Ampla.General.Common.FavoriteDescriptorCollection,Citect.Ampla.General.Common" keytype="string">
+      </Property>
+    </Property>
+  </Item>
+  
+</Ampla>

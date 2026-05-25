@@ -1,0 +1,12 @@
+<Ampla name="ExampleProject">
+  <Reference id="ref1" name="Citect.Ampla.StandardItems" version="4.4"/>
+  <Item id="scope-1" name="ValidScopeItem">
+    <Property name="InheritPermissions">False</Property>
+  </Item>
+  <Item id="item-1" name="ItemWithMissingScope">
+    <Property name="ScopeId">missing-scope</Property>
+  </Item>
+  <Item id="item-2" name="ItemWithValidScope">
+    <Property name="ScopeId">scope-1</Property>
+  </Item>
+</Ampla>

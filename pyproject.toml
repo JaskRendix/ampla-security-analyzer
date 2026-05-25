@@ -1,0 +1,29 @@
+[project]
+name = "ampla-security"
+version = "1.0.0"
+description = "Ampla Security Analysis Engine"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Giorgio" }
+]
+
+dependencies = [
+    "lxml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "ampla_security/testing"
+]
+addopts = "--disable-warnings --maxfail=1"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
