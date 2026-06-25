@@ -22,7 +22,7 @@ dev = [
 testpaths = [
     "ampla_security/testing"
 ]
-addopts = "--disable-warnings --maxfail=1"
+addopts = "--cov=ampla_security --cov-report=term-missing"
 
 [build-system]
 requires = ["setuptools>=61.0"]
