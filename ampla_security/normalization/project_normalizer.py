@@ -1,3 +1,5 @@
+from typing import Any
+
 from lxml import etree
 
 from ampla_security.utils.hashing import sha1
@@ -29,7 +31,6 @@ class ProjectNormalizer:
         self._finalize_items(normalized_root)
         return etree.ElementTree(normalized_root)
 
-
     def _index_items(self) -> None:
         for item in self.root.xpath("//Item[@id]"):
             self.items_by_id[item.get("id")] = item
@@ -38,7 +39,6 @@ class ProjectNormalizer:
         for ref in self.root.xpath("//Reference[@id]"):
             self.references_by_id[ref.get("id")] = ref
 
-
     def _finalize_items(self, root: etree._Element) -> None:
         for item in root.xpath("//Item[@id]"):
             self.add_item_attributes(item)
@@ -46,15 +46,6 @@ class ProjectNormalizer:
     def normalize_document(self, root):
         normalized = copy_node(root)
         self._remove_comments(normalized)
-        return normalized
-
-    def normalize_project_citect_iim(self, citect_root):
-        normalized = etree.Element("Project")
-        for element in citect_root:
-            if element.tag == "Item":
-                normalized.append(self.normalize_item(element))
-            else:
-                normalized.append(copy_node(element))
         return normalized
 
     def normalize_project_ampla(self, ampla_root):
