@@ -100,12 +100,18 @@ from lxml import etree
 from ampla_security.normalization.project_normalizer import ProjectNormalizer
 
 tree = etree.parse("AmplaProject.xml")
-normalizer = ProjectNormalizer(tree)
+normalizer = ProjectNormalizer(tree, language_document="Language.html")
 normalized = normalizer.normalize()
 
 users = normalized.getroot().xpath("//Item[@type='Citect.Ampla.StandardItems.User']")
 print(len(users))
 ```
+
+`language_document` is optional and accepts a path, an `lxml` element tree, or
+an `lxml` root element. It uses the XSLT language-map format
+`html/body/div[@id]`; a div's `id` matches the source item/class name and its
+normalized text becomes the `translation` attribute. Omitting the language
+document leaves translation attributes absent.
 
 ---
 

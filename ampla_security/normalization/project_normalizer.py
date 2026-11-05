@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from lxml import etree
 
 from ampla_security.utils.hashing import sha1
@@ -17,11 +19,41 @@ class ProjectNormalizer:
     Orchestrates normalization of Ampla project XML.
     """
 
-    def __init__(self, xml_tree: etree._ElementTree):
+    def __init__(
+        self,
+        xml_tree: etree._ElementTree,
+        language_document: (
+            str | Path | etree._ElementTree | etree._Element | None
+        ) = None,
+    ):
         self.tree = xml_tree
         self.root = xml_tree.getroot()
         self.items_by_id = {}
         self.references_by_id = {}
+        self.translations = self._load_translations(language_document)
+
+    def _load_translations(
+        self,
+        language_document: str | Path | etree._ElementTree | etree._Element | None,
+    ) -> dict[str, str]:
+        if language_document is None:
+            return {}
+
+        if isinstance(language_document, (str, Path)):
+            language_root = etree.parse(str(language_document)).getroot()
+        elif isinstance(language_document, etree._ElementTree):
+            language_root = language_document.getroot()
+        else:
+            language_root = language_document
+
+        translations: dict[str, str] = {}
+        for entry in language_root.xpath("/html/body/div[@id]"):
+            translation_id = entry.get("id")
+            if translation_id is not None:
+                translations.setdefault(
+                    translation_id, entry.xpath("normalize-space(string(.))")
+                )
+        return translations
 
     def normalize(self) -> etree._ElementTree:
         self._index_items()
@@ -219,6 +251,13 @@ class ProjectNormalizer:
         return item
 
     def add_translation(self, target):
+        name = target.get("name")
+        if name is None:
+            return target
+
+        translation = self.translations.get(name, "")
+        if translation and translation != name:
+            target.set("translation", translation)
         return target
 
     def normalize_item(self, item_node):

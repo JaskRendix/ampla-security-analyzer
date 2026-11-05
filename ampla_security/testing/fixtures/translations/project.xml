@@ -1,0 +1,16 @@
+<Ampla name="TranslationParity">
+  <Reference id="standard-items" name="Citect.Ampla.StandardItems" version="4.4.0"/>
+  <ClassDefinitions>
+    <ClassDefinition id="machine-class" name="Machine">
+      <ClassDefinition id="drive-class" name="Drive"/>
+    </ClassDefinition>
+  </ClassDefinitions>
+  <Item id="pump" name="Pump" type="Example.Pump">
+    <Item id="plain" name="Plain" type="Example.Plain"/>
+    <Item id="untranslated" name="Untranslated" type="Example.Untranslated"/>
+    <Item id="empty-translation" name="EmptyName" type="Example.Empty"/>
+    <Item id="matrix" name="Matrix" type="Citect.Ampla.General.Server.DecisionMatrix">
+      <Item id="calculated" name="Calculated" type="Citect.Ampla.StandardItems.CalculatedVariable"/>
+    </Item>
+  </Item>
+</Ampla>
