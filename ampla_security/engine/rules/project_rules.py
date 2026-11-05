@@ -107,70 +107,6 @@ class MissingPermissionRule:
 registry.register(MissingPermissionRule())
 
 
-class InvalidScopeReferenceRule:
-    """
-    Detects references to scopes that do not exist in the normalized project.
-    """
-
-    category: str = "project"
-    priority: int = 1
-
-    def apply(self, context: Any) -> list[dict[str, Any]]:
-        findings: list[dict[str, Any]] = []
-        scope_ids = set(context.scopes.keys())
-        if not scope_ids:
-            return findings
-
-        scope_properties = context.find(
-            "//Property[contains(translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'scope')]"
-        )
-        for prop in scope_properties:
-            value = (prop.text or "").strip()
-            if not value:
-                continue
-
-            if value not in scope_ids:
-                parent_item = prop.getparent()
-                findings.append(
-                    {
-                        "severity": "Error",
-                        "message": (
-                            f"Invalid scope reference: property '{prop.get('name')}' references unknown scope '{value}'."
-                        ),
-                        "itemId": (
-                            parent_item.get("id") if parent_item is not None else None
-                        ),
-                    }
-                )
-
-        scope_links = context.find(
-            "//Property[contains(translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'scope')]/ItemLink[@targetID]"
-        )
-        for link in scope_links:
-            target_id = link.get("targetID")
-            if target_id and target_id not in scope_ids:
-                parent_prop = link.getparent()
-                parent_item = (
-                    parent_prop.getparent() if parent_prop is not None else None
-                )
-                findings.append(
-                    {
-                        "severity": "Error",
-                        "message": (
-                            f"Invalid scope link: '{target_id}' is not a known project scope."
-                        ),
-                        "itemId": (
-                            parent_item.get("id") if parent_item is not None else None
-                        ),
-                    }
-                )
-
-        return findings
-
-
-registry.register(InvalidScopeReferenceRule())
-
-
 class WeakAuthenticationConfigRule:
     """
     Flags insecure authentication configuration patterns.
@@ -283,9 +219,10 @@ class ExposedConfigurationDataRule:
 
     def is_sensitive_name(self, prop_name: str) -> bool:
         prop_name_lower = prop_name.replace(" ", "").lower()
-        return any(
-            keyword in prop_name_lower for keyword in self.sensitive_name_keywords
-        )
+        if prop_name_lower in self.sensitive_name_keywords:
+            return True
+        tokens = set(re.findall(r"[a-z0-9]+", prop_name_lower))
+        return bool(tokens & self.sensitive_name_keywords)
 
     def is_sensitive_value(self, prop_value: str) -> bool:
         if any(pattern.search(prop_value) for pattern in self.sensitive_value_patterns):
