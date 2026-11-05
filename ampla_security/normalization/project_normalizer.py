@@ -319,11 +319,7 @@ class ProjectNormalizer:
     def _decision_matrix_item_link(self, item):
         link = etree.Element("ItemLink")
         link.set("targetID", item.get("id", ""))
-        item_path = [
-            ancestor.get("name", "")
-            for ancestor in item.xpath("ancestor-or-self::Item[@id]")
-        ]
-        link.set("absolutePath", ".".join(item_path))
+        link.set("absolutePath", self.get_item_full_name(item))
         return link
 
     def _order_decision_matrix_children(self, item, generated):
@@ -424,13 +420,9 @@ class ProjectNormalizer:
             )
             item_node.set("hash", sha1(hash_input))
 
-        if item_node.get("id") and not item_node.get("name"):
-            item_node.set("name", item_node.get("id"))
-
         if item_node.get("id"):
-            full_name = self.get_project_full_name_by_id(item_node.get("id"))
-            if full_name:
-                item_node.set("fullName", full_name)
+            full_name = self.get_item_full_name(item_node)
+            item_node.set("fullName", full_name)
 
         if item_node.get("class") == "true":
             item_node.set("class", "true")
@@ -549,26 +541,42 @@ class ProjectNormalizer:
 
     def normalize_expression_item_link(self, item_link, item_links=None):
         normalized = copy_node(item_link)
-        if normalized.get("targetID"):
-            absolute_path = self.get_project_full_name(normalized.get("targetID"))
-            if absolute_path:
-                normalized.set("absolutePath", absolute_path)
-
-        if item_links is not None and normalized.get("format"):
+        if item_links is not None:
+            nested_item_links = normalized.xpath("ItemLinkCollection/ItemLink")
             normalized.set(
                 "expressionFormat",
-                self.format_expression(normalized.get("format", ""), item_links),
+                self.format_expression(normalized.get("format", ""), nested_item_links),
             )
         return normalized
 
     def get_project_full_name(self, item_id):
         item = self.items_by_id.get(item_id)
         if item is None:
-            return None
-        return item.get("name") or item.get("id")
+            return ""
+
+        ancestors = item.xpath("ancestor-or-self::Item[@id]")
+        path_parts = []
+        for ancestor in ancestors:
+            name = ancestor.get("name", "")
+            if any(
+                character not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+                for character in name
+            ):
+                name = f"[{name}]"
+            path_parts.append(name)
+        if not path_parts:
+            return ""
+        return "Project." + ".".join(path_parts)
 
     def get_project_full_name_by_id(self, item_id):
         return self.get_project_full_name(item_id)
+
+    def get_item_full_name(self, item):
+        source_item = self.items_by_id.get(item.get("id"), item)
+        return ".".join(
+            ancestor.get("name", "")
+            for ancestor in source_item.xpath("ancestor-or-self::Item[@id]")
+        )
 
     def get_class_full_name_by_id(self, class_id):
         class_nodes = self.root.xpath(f"//ClassDefinition[@id='{class_id}']")
@@ -589,11 +597,7 @@ class ProjectNormalizer:
 
         for index, item_link in enumerate(item_links):
             token = f"#ItemReference{index}#"
-            replacement = (
-                self.get_project_full_name(item_link.get("targetID"))
-                or item_link.get("targetID")
-                or ""
-            )
+            replacement = self.get_project_full_name(item_link.get("targetID"))
             result = self.find_replace(result, token, replacement)
         return result
 
