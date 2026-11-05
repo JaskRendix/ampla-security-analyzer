@@ -236,7 +236,106 @@ class ProjectNormalizer:
             item = self.normalize_user_item(item)
         elif item_type == "Citect.Ampla.Metrics.Server.Resolvers.Resolver":
             item = self.normalize_resolver_item(item)
+        elif item_type == "Citect.Ampla.General.Server.DecisionMatrix":
+            item = self.normalize_decision_matrix(item)
+        elif item_type == "Citect.Ampla.General.Server.DecisionMatrixRule":
+            item = self.normalize_decision_matrix_rule(item_node, item)
 
+        return item
+
+    def normalize_decision_matrix(self, item):
+        inputs = []
+        for source_input in item.xpath(
+            "Item[@type='Citect.Ampla.StandardItems.CalculatedVariable']"
+        ):
+            input_node = etree.Element("Input")
+            item_id = source_input.get("id")
+            item_name = source_input.get("name")
+            input_node.set(
+                "hash",
+                sha1(
+                    item_id
+                    or "|".join(
+                        [
+                            item_name or "",
+                            source_input.get("type", ""),
+                            source_input.get("class", ""),
+                        ]
+                    )
+                ),
+            )
+            if item_id is not None:
+                input_node.set("id", item_id)
+            if item_name is not None:
+                input_node.set("name", item_name)
+            self.add_translation(input_node)
+            input_node.set(
+                "displayOrder",
+                self._item_display_order(source_input),
+            )
+            input_node.append(self._decision_matrix_item_link(source_input))
+            inputs.append(input_node)
+
+        return self._order_decision_matrix_children(item, inputs)
+
+    def normalize_decision_matrix_rule(self, source_item, item):
+        inputs = []
+        parent = source_item.getparent()
+        if parent is not None:
+            for source_input in parent.xpath(
+                "Item[@type='Citect.Ampla.StandardItems.CalculatedVariable']"
+            ):
+                input_name = source_input.get("name", "")
+                input_rule = etree.Element("InputRule")
+                input_rule.set("name", input_name)
+                input_rule.set(
+                    "displayOrder",
+                    self._item_display_order(source_input),
+                )
+                values = source_item.xpath("Property[@name=$name]", name=input_name)
+                input_rule.set(
+                    "value",
+                    "".join(values[0].itertext()) if values else "Ignore",
+                )
+                input_rule.append(self._decision_matrix_item_link(source_input))
+                inputs.append(input_rule)
+
+        return self._order_decision_matrix_children(item, inputs)
+
+    def _item_display_order(self, item):
+        values = item.xpath("Property[@name='DisplayOrder']")
+        if values:
+            return "".join(values[0].itertext())
+        return self._get_default_display_order()
+
+    def _decision_matrix_item_link(self, item):
+        link = etree.Element("ItemLink")
+        link.set("targetID", item.get("id", ""))
+        item_path = [
+            ancestor.get("name", "")
+            for ancestor in item.xpath("ancestor-or-self::Item[@id]")
+        ]
+        link.set("absolutePath", ".".join(item_path))
+        return link
+
+    def _order_decision_matrix_children(self, item, generated):
+        properties = [child for child in item if child.tag == "Property"]
+        items = [child for child in item if child.tag == "Item"]
+
+        item[:] = []
+        for child in generated:
+            item.append(child)
+
+        if not any(prop.get("name") == "DisplayOrder" for prop in properties):
+            display_order = etree.Element("Property")
+            display_order.set("name", "DisplayOrder")
+            display_order.text = self._get_default_display_order()
+            properties.insert(0, display_order)
+
+        for child in properties:
+            item.append(child)
+        for child in items:
+            item.append(child)
         return item
 
     def normalize_item_property(self, property_node, parent_item=None):
@@ -349,14 +448,13 @@ class ProjectNormalizer:
             return "0"
 
         version_parts = reference_versions[0].split(".")
-        major = (
-            int(version_parts[0]) if version_parts and version_parts[0].isdigit() else 0
-        )
-        minor = (
-            int(version_parts[1])
-            if len(version_parts) > 1 and version_parts[1].isdigit()
-            else 0
-        )
+        major_version = version_parts[0] if len(version_parts) > 1 else ""
+        minor_version = version_parts[1] if len(version_parts) > 2 else ""
+        try:
+            major = float(major_version)
+            minor = float(minor_version)
+        except ValueError:
+            return "0"
         if major > 4 or (major == 4 and minor >= 2):
             return "50000"
         return "0"
