@@ -1,5 +1,3 @@
-from typing import Any
-
 from lxml import etree
 
 from ampla_security.utils.hashing import sha1
@@ -227,10 +225,14 @@ class ProjectNormalizer:
         item = copy_node(item_node)
         for child in list(item):
             if child.tag == "Property":
-                if self.exclude_definition_property(child):
+                if "id" in item.attrib and self.exclude_definition_property(child):
                     item.remove(child)
                 else:
-                    item.replace(child, self.normalize_item_property(child, item))
+                    normalized_property = self.normalize_item_property(child, item)
+                    if normalized_property is None:
+                        item.remove(child)
+                    else:
+                        item.replace(child, normalized_property)
             elif child.tag == "ItemClassAssociation":
                 item.remove(child)
                 item.append(self.normalize_item_class_association(child))
@@ -343,8 +345,12 @@ class ProjectNormalizer:
         return item
 
     def normalize_item_property(self, property_node, parent_item=None):
-        if self.exclude_runstate_property(property_node):
-            return etree.Element("Property")
+        if (
+            parent_item is not None
+            and "id" in parent_item.attrib
+            and self.exclude_definition_property(property_node)
+        ):
+            return None
 
         normalized = copy_node(property_node)
         prop_name = normalized.get("name")
@@ -603,6 +609,7 @@ class ProjectNormalizer:
             "DisplayOrderGroup",
             "PropertyMaskSets",
             "DataSource",
+            "Definition",
         ]
         return property_node.get("name") in exclude
 

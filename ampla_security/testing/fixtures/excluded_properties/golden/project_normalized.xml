@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Project>
+  <Properties>
+    <ProjectProperty name="Platform.Version"/>
+    <ProjectProperty name="Applications.Version"/>
+    <ProjectProperty name="name">ExcludedPropertyParity</ProjectProperty>
+  </Properties>
+  <Item hash="id1" id="parent" name="Parent" fullName="Parent">
+    <Property name="RunStateValue">keep-runstate-lookalike</Property>
+    <Property name="DisplayOrderIndexes">keep-index-lookalike</Property>
+    <Property name="DisplayOrderGroupName">keep-group-lookalike</Property>
+    <Property name="PropertyMaskSetsExtra">keep-mask-lookalike</Property>
+    <Property name="DataSources">keep-source-lookalike</Property>
+    <Property name="Definitions">keep-definition-lookalike</Property>
+    <Property name="DisplayOrder">0</Property>
+    <Item hash="id2" id="nested" name="Nested" fullName="Parent.Nested">
+      <Property name="DefinitionExtra">keep nested definition lookalike</Property>
+      <Property name="DisplayOrder">0</Property>
+    </Item>
+  </Item>
+  <Item name="NoId">
+    <Property name="Definition">keep no-id definition</Property>
+    <Property name="RunState">keep no-id runstate</Property>
+  </Item>
+  <Item hash="id3" id="" name="EmptyId" fullName="EmptyId">
+    <Property name="DisplayOrder">0</Property>
+  </Item>
+</Project>

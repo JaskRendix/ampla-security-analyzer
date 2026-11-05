@@ -1,0 +1,28 @@
+<Ampla name="ExcludedPropertyParity">
+  <Item id="parent" name="Parent">
+    <Property name="RunState">running</Property>
+    <Property name="DisplayOrderIndex">10</Property>
+    <Property name="DisplayOrderGroup">group</Property>
+    <Property name="PropertyMaskSets">mask</Property>
+    <Property name="DataSource">source</Property>
+    <Property name="Definition">definition</Property>
+    <Property name="RunStateValue">keep-runstate-lookalike</Property>
+    <Property name="DisplayOrderIndexes">keep-index-lookalike</Property>
+    <Property name="DisplayOrderGroupName">keep-group-lookalike</Property>
+    <Property name="PropertyMaskSetsExtra">keep-mask-lookalike</Property>
+    <Property name="DataSources">keep-source-lookalike</Property>
+    <Property name="Definitions">keep-definition-lookalike</Property>
+    <Item id="nested" name="Nested">
+      <Property name="Definition">nested definition</Property>
+      <Property name="RunState">nested running</Property>
+      <Property name="DefinitionExtra">keep nested definition lookalike</Property>
+    </Item>
+  </Item>
+  <Item name="NoId">
+    <Property name="Definition">keep no-id definition</Property>
+    <Property name="RunState">keep no-id runstate</Property>
+  </Item>
+  <Item id="" name="EmptyId">
+    <Property name="Definition">omit empty-id definition</Property>
+  </Item>
+</Ampla>
