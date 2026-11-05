@@ -1,0 +1,36 @@
+
+========================================
+User: 'Alice & Co'
+      Authentication = WindowsIntegrated
+      Identity = DOMAIN\alice & Co
+----------------------------------------
++  Role: 'Reader & Reviewer'
+   Deleted <Scope>
+   Ops & Reporting
++  [Denied]
+   Admin Zone
+   Zeta <Area>
+========================================
+
+========================================
+User: 'Bob'
+      Authentication = Forms
+      Identity = BOB
+----------------------------------------
++  Role: 'Administrator'
+   Admin Zone
++  [Denied]
+   Ops & Reporting
+   Zeta <Area>
+========================================
+
+========================================
+User: 'Cathy <Guest> Café'
+      Authentication = Basic <token>
+      Identity = CITEC\cathy & guest
+----------------------------------------
++  [Denied]
+   Admin Zone
+   Ops & Reporting
+   Zeta <Area>
+========================================
