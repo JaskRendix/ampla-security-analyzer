@@ -1,0 +1,70 @@
+<Security name="Ampla &amp; Company">
+  <Operations>
+    <Operation operationId="operation-read" name="Read &amp; Review" description="Checks &quot;read&quot; &amp; review"/>
+    <Operation operationId="operation-write" name="Write" description="Changes &lt;data&gt;"/>
+  </Operations>
+  <RoleDefinitions>
+    <RoleDefinition roleId="role-reader" name="Reader &amp; Reviewer" description="Can read &lt;data&gt;">
+      <Operation name="Read &amp; Review"/>
+    </RoleDefinition>
+    <RoleDefinition roleId="role-admin" name="Administrator" description="Can change data">
+      <Operation name="Write"/>
+    </RoleDefinition>
+  </RoleDefinitions>
+  <Scopes>
+    <Scope name="Ops &amp; Reporting" scopeId="scope-ops" valid="Scope is Valid">
+      <Role roleId="role-reader" name="Reader &amp; Reviewer">
+        <Member sid="S-1-5-21-1" type="windows">
+          <User id="alice" name="Alice &amp; Co">
+            <Identity name="DOMAIN\alice &amp; Co">S-1-5-21-1</Identity>
+          </User>
+        </Member>
+        <Member sid="unknown-sid" type="unknown">
+          <User>unknown-sid</User>
+        </Member>
+      </Role>
+    </Scope>
+    <Scope name="Zeta &lt;Area&gt;" scopeId="scope-zeta" valid="Scope is Valid"/>
+    <Scope name="Admin Zone" scopeId="scope-admin" valid="Scope is Valid">
+      <Role roleId="role-admin" name="Administrator">
+        <Member sid="S-1-9-2" type="ampla">
+          <User id="bob" name="Bob">
+            <Identity name="BOB">S-1-9-2</Identity>
+          </User>
+        </Member>
+      </Role>
+    </Scope>
+    <Scope name="Deleted &lt;Scope&gt;" scopeId="scope-deleted" invalid="Warning: Scope &lt;removed&gt; &amp; unavailable">
+      <Role roleId="role-reader" name="Reader &amp; Reviewer">
+        <Member sid="S-1-5-21-1" type="windows">
+          <User id="alice" name="Alice &amp; Co">
+            <Identity name="DOMAIN\alice &amp; Co">S-1-5-21-1</Identity>
+          </User>
+        </Member>
+      </Role>
+    </Scope>
+  </Scopes>
+  <Users>
+    <User id="cathy" name="Cathy &lt;Guest&gt; Café" invalid="Account &amp; identity need review">
+      <Property name="Authentication">Basic &lt;token&gt;</Property>
+      <Property name="SecurityID">S-1-9-cathy</Property>
+      <Property name="Identity">
+        <Identity name="CITEC\cathy &amp; guest">S-1-9-cathy</Identity>
+      </Property>
+    </User>
+    <User id="alice" name="Alice &amp; Co">
+      <Property name="Authentication">WindowsIntegrated</Property>
+      <Property name="SecurityID">S-1-5-21-1</Property>
+      <Property name="Identity">
+        <Identity name="DOMAIN\alice &amp; Co">S-1-5-21-1</Identity>
+      </Property>
+    </User>
+    <User id="bob" name="Bob">
+      <Property name="Authentication">Forms</Property>
+      <Property name="SecurityID">S-1-9-2</Property>
+      <Property name="Identity">
+        <Identity name="BOB">S-1-9-2</Identity>
+      </Property>
+    </User>
+  </Users>
+</Security>
