@@ -5,6 +5,10 @@ This implements the Project.Security.xslt transformation, extracting
 Users and Scopes from the normalized project for use by AuthStore normalization.
 """
 
+import copy
+import math
+import re
+
 from lxml import etree
 from lxml.etree import _Element, _ElementTree
 
@@ -22,12 +26,9 @@ class ProjectSecurityExtractor:
 
         # Extract Users
         users_elem = etree.SubElement(security, "Users")
-        for user_item in self.root.xpath(
-            "//Item[@type='Citect.Ampla.StandardItems.User']"
-        ):
-            user_elem = self._extract_user(user_item)
-            if user_elem is not None:
-                users_elem.append(user_elem)
+        user_items = self.root.xpath("//Item[@type='Citect.Ampla.StandardItems.User']")
+        for user_item in self._sort_xslt_items(user_items):
+            users_elem.append(self._extract_user(user_item))
 
         # Extract Scopes
         scopes_elem = etree.SubElement(security, "Scopes")
@@ -39,26 +40,47 @@ class ProjectSecurityExtractor:
         global_scope.set("fullName", "{Global}")
 
         # Add items with InheritPermissions=False as scopes
-        for item in self.root.xpath(
-            "//Item[Property[@name='InheritPermissions' and text()='False']]"
-        ):
+        scope_items = self.root.xpath(
+            "//Item[Property[@name='InheritPermissions']/text()='False']"
+        )
+        for item in self._sort_xslt_items(scope_items):
             scope_elem = etree.SubElement(scopes_elem, "Scope")
             scope_elem.set("scopeId", item.get("id", ""))
-            scope_elem.set("name", item.get("name", ""))
-            scope_elem.set("fullName", item.get("fullName", ""))
-            scope_elem.set("id", item.get("id", ""))
+            for name, value in item.attrib.items():
+                scope_elem.set(name, value)
 
         return etree.ElementTree(security)
+
+    def _sort_xslt_items(self, items: list[_Element]) -> list[_Element]:
+        def sort_key(item: _Element) -> tuple[str, int, float, str]:
+            parent = item.getparent()
+            parent_full_name = parent.get("fullName", "") if parent is not None else ""
+            display_orders = item.xpath("Property[@name='DisplayOrder']")
+            display_order = (
+                self._xpath_number(display_orders[0]) if display_orders else math.nan
+            )
+            is_nan = math.isnan(display_order)
+            return (
+                parent_full_name,
+                0 if is_nan else 1,
+                0.0 if is_nan else display_order,
+                item.get("name", ""),
+            )
+
+        return sorted(items, key=sort_key)
+
+    def _xpath_number(self, node: _Element) -> float:
+        value = "".join(node.itertext()).strip()
+        if not re.fullmatch(r"-?(?:\d+(?:\.\d*)?|\.\d+)", value):
+            return math.nan
+        return float(value)
 
     def _extract_user(self, user_item: _Element) -> _Element:
         """Extract a User element from a User item."""
         user = etree.Element("User")
 
-        # Copy attributes
-        for attr in ["id", "name", "hash", "fullName", "type"]:
-            value = user_item.get(attr)
-            if value:
-                user.set(attr, value)
+        for name, value in user_item.attrib.items():
+            user.set(name, value)
 
         # Copy DisplayOrder property
         display_order = user_item.xpath("Property[@name='DisplayOrder']")
@@ -84,38 +106,25 @@ class ProjectSecurityExtractor:
 
     def _copy_property(self, prop: _Element) -> _Element:
         """Copy a property element."""
-        new_prop = etree.Element(prop.tag)
-
-        for attr in prop.attrib:
-            new_prop.set(attr, prop.get(attr))
-
-        new_prop.text = prop.text
-
-        for child in prop:
-            new_prop.append(etree.fromstring(etree.tostring(child)))
-
-        return new_prop
+        return copy.deepcopy(prop)
 
     def _parse_identity_property(self, identity_prop: _Element) -> _Element:
         """Parse Identity property and extract name and SID."""
-        new_prop = etree.Element("Property")
-        new_prop.set("name", identity_prop.get("name", "Identity"))
+        new_prop = etree.Element(identity_prop.tag)
+        for name, value in identity_prop.attrib.items():
+            new_prop.set(name, value)
 
-        value = (identity_prop.text or "").strip()
-        if not value:
-            return new_prop
-
-        # Parse pipe-separated format: account|sid|other
+        value = "".join(identity_prop.itertext())
         parts = value.split("|")
-        account = parts[0].strip() if len(parts) > 0 else ""
-        sid = parts[1].strip() if len(parts) > 1 else ""
+        account = parts[0] if len(parts) > 1 else ""
+        sid = parts[1] if len(parts) > 2 else ""
 
-        # Create Identity sub-element
         identity_elem = etree.SubElement(new_prop, "Identity")
         if account:
             identity_elem.set("name", account)
         if sid:
             identity_elem.set("sid", sid)
-        identity_elem.text = value
+        if value:
+            identity_elem.text = value
 
         return new_prop
