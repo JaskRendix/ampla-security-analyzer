@@ -148,8 +148,13 @@ class TestAuthStoreNormalization:
         normalizer = AuthstoreNormalizer(tree)
         result = normalizer.normalize()
 
-        # AuthStore should have AuthorizationApplication or similar structure
-        assert result.getroot().tag in ["AuthStore", "Security"]
+        assert result.getroot().tag == "Security"
+        assert [child.tag for child in result.getroot()] == [
+            "Operations",
+            "RoleDefinitions",
+            "Scopes",
+            "Users",
+        ]
 
     def test_parse_identity_property(self):
         """Test that Identity properties are correctly parsed."""

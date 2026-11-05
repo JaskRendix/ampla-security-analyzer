@@ -12,9 +12,7 @@ from ampla_security.xml.loader import load_xml
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Ampla Security Analysis Tool"
-    )
+    parser = argparse.ArgumentParser(description="Ampla Security Analysis Tool")
     parser.add_argument("input", help="Input XML file")
     args = parser.parse_args()
 
