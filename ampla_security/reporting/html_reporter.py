@@ -28,17 +28,18 @@ class HtmlReporter:
         self.template_dir = Path(__file__).resolve().parent / "templates"
 
     def generate(self, output_path: str | Path) -> None:
-        if self.security_root is not None:
-            html = self._render_security_report()
-        else:
-            base_template = self._load_template("base.html")
-            report_template = self._load_template("security_report.html")
-            report_content = self._render_report_template(report_template)
-            html = base_template.replace("{{ content }}", report_content)
-
+        html = self.render()
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(html, encoding="utf-8")
+
+    def render(self) -> str:
+        if self.security_root is not None:
+            return self._render_security_report()
+        base_template = self._load_template("base.html")
+        report_template = self._load_template("security_report.html")
+        report_content = self._render_report_template(report_template)
+        return base_template.replace("{{ content }}", report_content)
 
     def _render_security_report(self) -> str:
         if self.security_root is None:

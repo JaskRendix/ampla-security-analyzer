@@ -74,16 +74,22 @@ pip install .[dev]
 python -m ampla_security.cli.analyze \
   --project AmplaProject.xml \
   --authstore AuthStore.xml \
-  --output security_report.html
+  --output-dir Output
 ```
 
 ### **Options**
 
 ```
 --help
---normalize-only
---verbose
+--project PROJECT_XML
+--authstore AUTHSTORE_XML
+--output-dir OUTPUT_DIRECTORY
 ```
+
+The output directory contains the normalized intermediates (`project.xml`,
+`project.security.xml`, and `authstore.xml`) plus the legacy reports
+(`Project.Security.html`, `Project.Security.Roles.txt`, and
+`Project.Security.Assignments.txt`). The default output directory is `Output`.
 
 ---
 
