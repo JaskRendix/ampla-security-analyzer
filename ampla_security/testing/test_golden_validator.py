@@ -228,7 +228,7 @@ def test_pipeline_raises_on_unhandled_structural_differences(tmp_path):
     assert "Unexpected" in project_comparison["diff"]
 
 
-def test_validator_reports_a_real_unhandled_project_order_difference(tmp_path):
+def test_validator_confirms_default_display_order_matches_xslt(tmp_path):
     project_tree = etree.parse(str(FIXTURE_DIR / "project.xml"))
     for item in project_tree.xpath("//Item[@id='site' or @id='area']"):
         for display_order in item.xpath("./Property[@name='DisplayOrder']"):
@@ -238,12 +238,11 @@ def test_validator_reports_a_real_unhandled_project_order_difference(tmp_path):
 
     validator = GoldenValidator(REPOSITORY_ROOT)
     validator.working_dir = tmp_path / "working"
-    with pytest.raises(ParityValidationError, match="project_normalized") as error:
-        validator.validate_pipeline(project_input, FIXTURE_DIR / "authstore.xml")
+    results = validator.validate_pipeline(project_input, FIXTURE_DIR / "authstore.xml")
 
-    project_comparison = error.value.results["comparisons"]["project_normalized"]
-    assert project_comparison["identical"] is False
-    assert "DisplayOrder" in project_comparison["diff"]
+    project_comparison = results["comparisons"]["project_normalized"]
+    assert results["passed"] is True
+    assert project_comparison["identical"] is True
 
 
 def test_module_cli_runs_the_complete_parity_pipeline(tmp_path):

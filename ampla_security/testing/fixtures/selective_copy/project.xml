@@ -1,0 +1,34 @@
+<Ampla name="SelectiveCopy" sourceExtra="drop-root-attribute">
+  <Reference id="standard-items" name="Citect.Ampla.StandardItems" version="4.4.0"/>
+  <Item id="parent" name="Parent" type="Example.Type" reference="drop-reference" extra="drop-item-attribute" class="not-preserved">
+    ignored direct item text
+    <!-- Omitted direct comment -->
+    <Property id="property-id" name="Mixed" extra="drop-property-attribute" another="drop-this-too">before<Child extra="keep-nested-attribute">nested<!-- Keep nested comment -->text</Child>after</Property>
+    <Unexpected extra="drop-unsupported-child"><Inner>drop with parent</Inner></Unexpected>
+    <ItemClassAssociation classDefinitionId="missing-class" extra="drop-association-attribute"/>
+    <Item id="child" name="Child" type="Example.Child" reference="drop-child-reference" extra="drop-child-attribute">
+      <Property name="Value" extra="drop-value-attribute">kept</Property>
+    </Item>
+    <Item name="NoId" extra="preserve-no-id-attribute">
+      text and structures on an item without an id are copied
+      <!-- Keep no-id comment -->
+      <Unexpected extra="preserve-no-id-child"><Inner>keep this</Inner></Unexpected>
+      <Item id="grandchild" name="Grandchild" type="Example.Grandchild" extra="drop-grandchild-attribute">
+        <Property name="Value" extra="drop-grandchild-property-attribute">kept</Property>
+      </Item>
+    </Item>
+  </Item>
+  <Item id="user" name="User" type="Citect.Ampla.StandardItems.User" sid="drop-sid" extra="drop-user-attribute">
+    <Item id="user-child" name="UserChild" type="Example.Child"/>
+  </Item>
+  <Item id="resolver" name="Resolver" type="Citect.Ampla.Metrics.Server.Resolvers.Resolver" extra="drop-resolver-attribute">
+    <Property name="Action" extra="drop-action-attribute">Custom</Property>
+    <Item id="resolver-child" name="ResolverChild" type="Example.Child"/>
+  </Item>
+  <ClassDefinitions>
+    <ClassDefinition id="equipment-class" name="Equipment"/>
+  </ClassDefinitions>
+  <Item id="equipment-template" name="EquipmentTemplate" type="Citect.Ampla.General.Server.Templating.EquipmentTemplate" extra="drop-template-attribute">
+    <Property name="TargetEquipmentClass" classDefinitionId="equipment-class" extra="preserved-by-special-template">equipment-class<Unexpected/></Property>
+  </Item>
+</Ampla>

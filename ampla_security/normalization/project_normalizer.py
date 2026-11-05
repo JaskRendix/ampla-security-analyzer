@@ -51,7 +51,7 @@ class ProjectNormalizer:
 
     def normalize_document(self, root):
         normalized = copy_node(root)
-        self._remove_comments(normalized)
+        self._normalize_item_children(normalized)
         return normalized
 
     def normalize_project_ampla(self, ampla_root):
@@ -222,23 +222,62 @@ class ProjectNormalizer:
         return target
 
     def normalize_item(self, item_node):
-        item = copy_node(item_node)
-        for child in list(item):
-            if child.tag == "Property":
-                if "id" in item.attrib and self.exclude_definition_property(child):
-                    item.remove(child)
-                else:
+        if "id" not in item_node.attrib:
+            item = copy_node(item_node)
+            for child in list(item):
+                if child.tag == "Property":
                     normalized_property = self.normalize_item_property(child, item)
                     if normalized_property is None:
                         item.remove(child)
                     else:
                         item.replace(child, normalized_property)
-            elif child.tag == "ItemClassAssociation":
-                item.remove(child)
-                item.append(self.normalize_item_class_association(child))
-            elif child.tag == "Item":
-                item.replace(child, self.normalize_item(child))
-        self._normalize_item_children(item, item)
+                elif child.tag == "Item":
+                    normalized_item = self.normalize_item(child)
+                    normalized_item.tail = child.tail
+                    item.replace(child, normalized_item)
+                elif (
+                    child.tag == "ItemClassAssociation"
+                    and "classDefinitionId" in child.attrib
+                ):
+                    normalized_association = self.normalize_item_class_association(
+                        child
+                    )
+                    normalized_association.tail = child.tail
+                    item.replace(child, normalized_association)
+                else:
+                    self._normalize_item_children(child, item)
+            return item
+
+        item = etree.Element("Item")
+        for attribute in ("id", "name", "type"):
+            if attribute in item_node.attrib:
+                item.set(attribute, item_node.get(attribute))
+        item.set("fullName", self.get_item_full_name(item_node))
+        self.add_translation(item)
+
+        for child in item_node:
+            if child.tag == "ItemClassAssociation":
+                if "classDefinitionId" in child.attrib:
+                    item.append(self.normalize_item_class_association(child))
+                else:
+                    copied_association = copy_node(child)
+                    copied_association.tail = None
+                    item.append(copied_association)
+        for child in item_node:
+            if child.tag == "Property":
+                normalized_property = self.normalize_item_property(child, item_node)
+                if normalized_property is not None:
+                    normalized_property.tail = None
+                    item.append(normalized_property)
+
+        if item.get("type") not in (
+            "Citect.Ampla.General.Server.DecisionMatrix",
+            "Citect.Ampla.General.Server.DecisionMatrixRule",
+        ):
+            self.add_property_display_order(item)
+        for child in item_node:
+            if child.tag == "Item":
+                item.append(self.normalize_item(child))
 
         # Apply specialized item transforms
         item_type = item.get("type")
@@ -352,8 +391,7 @@ class ProjectNormalizer:
         ):
             return None
 
-        normalized = copy_node(property_node)
-        prop_name = normalized.get("name")
+        prop_name = property_node.get("name")
 
         # Apply specialized property transforms
         parent_type = parent_item.get("type") if parent_item is not None else None
@@ -371,15 +409,15 @@ class ProjectNormalizer:
             parent_type == "Citect.Ampla.General.Server.RecordStates.CycleManager"
             and prop_name == "Cycles"
         ):
-            normalized = self.normalize_cycle_manager_cycles(normalized)
+            normalized = self.normalize_cycle_manager_cycles(property_node)
 
         # Hook: Home property
         elif prop_name == "Home":
-            normalized = self.normalize_home_property(normalized)
+            normalized = self.normalize_home_property(property_node)
 
         # Hook: Favorites property
         elif prop_name == "Favorites":
-            normalized = self.normalize_favorites_property(normalized)
+            normalized = self.normalize_favorites_property(property_node)
 
         # Equipment template target class reference
         elif (
@@ -388,7 +426,13 @@ class ProjectNormalizer:
             == "Citect.Ampla.General.Server.Templating.EquipmentTemplate"
             and prop_name == "TargetEquipmentClass"
         ):
-            normalized = self.normalize_equipment_template_target(normalized)
+            normalized = self.normalize_equipment_template_target(property_node)
+        else:
+            normalized = copy_node(property_node)
+            if parent_item is not None and "id" in parent_item.attrib:
+                for attribute in list(normalized.attrib):
+                    if attribute not in ("id", "name"):
+                        del normalized.attrib[attribute]
 
         self._normalize_item_children(normalized, parent_item)
         return normalized
@@ -509,7 +553,19 @@ class ProjectNormalizer:
 
     def _normalize_item_children(self, parent_node, parent_item=None):
         for child in list(parent_node):
-            if child.tag == "ExpressionConfig":
+            if child.tag == "Property":
+                property_parent = parent_item
+                if property_parent is None and parent_node.tag == "Item":
+                    property_parent = parent_node
+                normalized_property = self.normalize_item_property(
+                    child, property_parent
+                )
+                if normalized_property is None:
+                    parent_node.remove(child)
+                else:
+                    normalized_property.tail = child.tail
+                    parent_node.replace(child, normalized_property)
+            elif child.tag == "ExpressionConfig":
                 parent_node.replace(child, self.normalize_expression_config(child))
             elif child.tag == "ItemLink":
                 parent_node.replace(child, self.normalize_expression_item_link(child))
@@ -523,7 +579,16 @@ class ProjectNormalizer:
                             ),
                         )
             elif child.tag == "Item":
-                parent_node.replace(child, self.normalize_item(child))
+                normalized_item = self.normalize_item(child)
+                normalized_item.tail = child.tail
+                parent_node.replace(child, normalized_item)
+            elif (
+                child.tag == "ItemClassAssociation"
+                and "classDefinitionId" in child.attrib
+            ):
+                normalized_association = self.normalize_item_class_association(child)
+                normalized_association.tail = child.tail
+                parent_node.replace(child, normalized_association)
             elif child.tag == "HistoricalExpressionConfig":
                 # Process nested HistoricalFieldExpression structure
                 for expr_config in child.xpath("ExpressionConfig[@format='']"):
@@ -556,7 +621,6 @@ class ProjectNormalizer:
             item_node.set("class", "true")
 
         self.add_translation(item_node)
-        self.add_property_display_order(item_node)
 
     def add_property_display_order(self, item_node):
         if item_node.xpath("Property[@name='DisplayOrder']"):
@@ -620,28 +684,22 @@ class ProjectNormalizer:
         prop.set("class", "true")
 
         item_link = etree.Element("ItemLink")
-        if class_id:
-            item_link.set("targetID", class_id)
-            absolute_path = self.get_class_full_name_by_id(class_id)
-            if absolute_path:
-                item_link.set("absolutePath", absolute_path)
+        item_link.set("targetID", class_id or "")
+        item_link.set("absolutePath", self.get_class_full_name_by_id(class_id or ""))
         prop.append(item_link)
         return prop
 
     def normalize_equipment_template_target(self, property_node):
         normalized = copy_node(property_node)
         normalized.set("class", "true")
+        normalized.text = None
+        normalized[:] = []
 
-        target_id = normalized.get("classDefinitionId")
-        if not target_id:
-            target_id = (normalized.text or "").strip() or None
-
+        target_id = property_node.get("classDefinitionId", "")
+        path_class_id = property_node.xpath("string(.)")
         item_link = etree.Element("ItemLink")
-        if target_id:
-            item_link.set("targetID", target_id)
-            absolute_path = self.get_class_full_name_by_id(target_id)
-            if absolute_path:
-                item_link.set("absolutePath", absolute_path)
+        item_link.set("targetID", target_id)
+        item_link.set("absolutePath", self.get_class_full_name_by_id(path_class_id))
         normalized.append(item_link)
         return normalized
 
@@ -710,7 +768,7 @@ class ProjectNormalizer:
     def get_class_full_name_by_id(self, class_id):
         class_nodes = self.root.xpath(f"//ClassDefinition[@id='{class_id}']")
         if not class_nodes:
-            return class_id
+            return ""
         class_node = class_nodes[0]
         ancestors = class_node.xpath("ancestor::ClassDefinition")
         path_parts = [anc.get("name") or anc.get("id") for anc in reversed(ancestors)]
@@ -742,17 +800,22 @@ class ProjectNormalizer:
         match="Item[@type='Citect.Ampla.General.Server.RecordStates.CycleManager']/Property[@name='Cycles']"
         """
         normalized = copy_node(property_node)
-        normalized.set("name", "Cycles")
+        normalized.attrib.clear()
+        if property_node.get("name") is not None:
+            normalized.set("name", property_node.get("name"))
+        normalized.text = None
 
         # Convert nested Item elements to ItemLink elements
-        for item_elem in list(normalized):
-            if item_elem.tag == "Item":
-                normalized.remove(item_elem)
-                item_link = etree.Element("ItemLink")
-                # The item element's text is the absolute path
-                absolute_path = item_elem.text or ""
-                item_link.set("absolutePath", absolute_path)
-                normalized.append(item_link)
+        normalized[:] = []
+        item_elements = property_node.xpath("Property/Item")
+        if not item_elements:
+            item_elements = property_node.xpath("Item")
+        for item_elem in item_elements:
+            item_link = etree.Element("ItemLink")
+            # The item element's text is the absolute path.
+            absolute_path = item_elem.text or ""
+            item_link.set("absolutePath", absolute_path)
+            normalized.append(item_link)
 
         return normalized
 
@@ -771,16 +834,23 @@ class ProjectNormalizer:
             action_prop = etree.Element("Property")
             action_prop.set("name", "Action")
             action_prop.text = "Module"
-            normalized.append(action_prop)
+            self._insert_before_child_items(normalized, action_prop)
 
         # Add default ResolverOperation property if missing
         if not normalized.xpath("./Property[@name='ResolverOperation']"):
             resolver_op_prop = etree.Element("Property")
             resolver_op_prop.set("name", "ResolverOperation")
             resolver_op_prop.text = "Sum"
-            normalized.append(resolver_op_prop)
+            self._insert_before_child_items(normalized, resolver_op_prop)
 
         return normalized
+
+    def _insert_before_child_items(self, item, property_node):
+        child_items = item.xpath("./Item")
+        if child_items:
+            item.insert(item.index(child_items[0]), property_node)
+        else:
+            item.append(property_node)
 
     def normalize_user_item(self, user_item):
         normalized = copy_node(user_item)
@@ -788,10 +858,7 @@ class ProjectNormalizer:
             auth_prop = etree.Element("Property")
             auth_prop.set("name", "Authentication")
             auth_prop.text = "WindowsIntegrated"
-            normalized.append(auth_prop)
-
-        if user_item.get("sid") and not normalized.get("identifier"):
-            normalized.set("identifier", user_item.get("sid"))
+            self._insert_before_child_items(normalized, auth_prop)
 
         return normalized
 

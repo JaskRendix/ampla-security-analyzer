@@ -1,0 +1,6 @@
+<h1>Security Report</h1>
+<ul>
+{% for finding in findings %}
+    <li>{{ finding.severity }} — {{ finding.message }}</li>
+{% endfor %}
+</ul>

@@ -1,0 +1,143 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Ampla Project Summary - Security</title>
+<link rel="stylesheet" type="text/css" href="css/security.css" media="screen,projector">
+</head>
+<body>
+<div class="header">
+<h1>Ampla Project Summary - Security</h1>
+<hr>
+</div>
+<span class="menu"><a href="#roles">Roles</a></span><span class="menu"><a href="#scopes">Scopes</a></span><span class="menu"><a href="#users">Users</a></span><hr>
+<a name="roles"></a><h2>Roles</h2>
+<table><tbody>
+<tr>
+<th>Operation</th>
+<th><span class="role" title="Can read &lt;data&gt;">Reader &amp; Reviewer</span></th>
+<th><span class="role" title="Can change data">Administrator</span></th>
+</tr>
+<tr>
+<td><span class="operation row-head" title='Checks "read" &amp; review'>Read &amp; Review</span></td>
+<td class="center allowed"><span title="allowed">Y</span></td>
+<td class="center denied"><span title="denied">.</span></td>
+</tr>
+<tr>
+<td><span class="operation row-head" title="Changes &lt;data&gt;">Write</span></td>
+<td class="center denied"><span title="denied">.</span></td>
+<td class="center allowed"><span title="allowed">Y</span></td>
+</tr>
+</tbody></table>
+<br><hr>
+<a name="scopes"></a><h2>Security Scopes</h2>
+<table><tbody>
+<tr>
+<th>Scope</th>
+<th><span class="role" title="Can read &lt;data&gt;">Reader &amp; Reviewer</span></th>
+<th><span class="role" title="Can change data">Administrator</span></th>
+</tr>
+<tr>
+<td><span class="scope row-head">Ops &amp; Reporting</span></td>
+<td class="allowed"><ul class="assignment">
+<li title=" [windows] ">
+<span class="user">Alice &amp; Co</span><br><span class="identity">(DOMAIN\alice &amp; Co)</span>
+</li>
+<li title=" [unknown] unknown-sid"><span class="warning user">unknown unknown user</span></li>
+</ul></td>
+<td class="denied"></td>
+</tr>
+<tr>
+<td><span class="scope row-head">Zeta &lt;Area&gt;</span></td>
+<td class="denied"></td>
+<td class="denied"></td>
+</tr>
+<tr>
+<td><span class="scope row-head">Admin Zone</span></td>
+<td class="denied"></td>
+<td class="allowed"><ul class="assignment"><li title=" [ampla] ">
+<span class="user">Bob</span><br><span class="identity">(BOB)</span>
+</li></ul></td>
+</tr>
+</tbody></table>
+<br><hr>
+<h2>Errors in Security Scopes</h2>
+<table><tbody>
+<tr>
+<th>Scope</th>
+<th><span class="role" title="Can read &lt;data&gt;">Reader &amp; Reviewer</span></th>
+<th><span class="role" title="Can change data">Administrator</span></th>
+</tr>
+<tr>
+<td>
+<span class="scope row-head">Deleted &lt;Scope&gt;</span><br><span class="warning">Warning: Scope &lt;removed&gt; &amp; unavailable</span>
+</td>
+<td class="allowed"><ul class="assignment"><li title=" [windows] ">
+<span class="user">Alice &amp; Co</span><br><span class="identity">(DOMAIN\alice &amp; Co)</span>
+</li></ul></td>
+<td class="denied"></td>
+</tr>
+</tbody></table>
+<br><hr>
+<a name="users"></a><h2>User Role Assignments</h2>
+<table><tbody>
+<tr>
+<th rowspan="2">Users</th>
+<th rowspan="2">Authentication</th>
+<th rowspan="2">Ampla Security</th>
+<th rowspan="2">Windows Identity</th>
+<th colspan="3">Role Assignments</th>
+</tr>
+<tr>
+<th class="allowed">Allowed</th>
+<th class="denied">Denied</th>
+<th>Invalid</th>
+</tr>
+<tr>
+<td>
+<span class="user row-head">Cathy &lt;Guest&gt; Café</span><br><span class="warning">Account &amp; identity need review</span>
+</td>
+<td>Basic &lt;token&gt;</td>
+<td>S-1-9-cathy</td>
+<td>CITEC\cathy &amp; guest</td>
+<td class="denied"></td>
+<td class="denied"><ul>
+<li><span class="scope">Admin Zone</span></li>
+<li><span class="scope">Ops &amp; Reporting</span></li>
+<li><span class="scope">Zeta &lt;Area&gt;</span></li>
+</ul></td>
+<td class=""></td>
+</tr>
+<tr>
+<td><span class="user row-head">Alice &amp; Co</span></td>
+<td>WindowsIntegrated</td>
+<td>S-1-5-21-1</td>
+<td>DOMAIN\alice &amp; Co</td>
+<td class="allowed"><ul><li>
+<span class="scope">Ops &amp; Reporting</span><ul><li><span class="allowed">Reader &amp; Reviewer</span></li></ul>
+</li></ul></td>
+<td class="denied"><ul>
+<li><span class="scope">Admin Zone</span></li>
+<li><span class="scope">Zeta &lt;Area&gt;</span></li>
+</ul></td>
+<td class="warning"><ul><li>
+<span class="scope warning" title="Warning: Scope &lt;removed&gt; &amp; unavailable">Deleted &lt;Scope&gt;</span><ul><li><span class="warning">Reader &amp; Reviewer</span></li></ul>
+</li></ul></td>
+</tr>
+<tr>
+<td><span class="user row-head">Bob</span></td>
+<td>Forms</td>
+<td>S-1-9-2</td>
+<td>BOB</td>
+<td class="allowed"><ul><li>
+<span class="scope">Admin Zone</span><ul><li><span class="allowed">Administrator</span></li></ul>
+</li></ul></td>
+<td class="denied"><ul>
+<li><span class="scope">Ops &amp; Reporting</span></li>
+<li><span class="scope">Zeta &lt;Area&gt;</span></li>
+</ul></td>
+<td class=""></td>
+</tr>
+</tbody></table>
+</body>
+</html>

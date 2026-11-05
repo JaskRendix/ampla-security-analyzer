@@ -29,10 +29,10 @@ htmlcov/
 
 # Local working outputs
 working/
-normalized_project.xml
-normalized_project_phase_d.xml
-security_report.html
-test_report.html
+/normalized_project.xml
+/normalized_project_phase_d.xml
+/security_report.html
+/test_report.html
 
 # Golden outputs (generated)
 golden/*.json
