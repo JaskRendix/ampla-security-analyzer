@@ -1,0 +1,11 @@
+<AzAdminManager>
+  <AzApplication Name="ValidatorFixture">
+    <AzOperation Guid="operation-read" Name="Read" Description="Read access">
+      <OperationID>1</OperationID>
+    </AzOperation>
+    <AzTask Guid="role-reader" Name="Reader" Description="Read-only role" RoleDefinition="True">
+      <OperationLink>operation-read</OperationLink>
+    </AzTask>
+    <AzScope Name="area" Description="Security scope for Site.Area 1"/>
+  </AzApplication>
+</AzAdminManager>

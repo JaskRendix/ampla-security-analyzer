@@ -12,6 +12,7 @@ from ampla_security.normalization.project_normalizer import ProjectNormalizer
 from ampla_security.normalization.project_security_extractor import (
     ProjectSecurityExtractor,
 )
+from ampla_security.utils.hashing import sha1
 
 
 class TestProjectNormalization:
@@ -48,8 +49,7 @@ class TestProjectNormalization:
         result = normalizer.normalize()
 
         item = result.getroot().xpath(".//Item[@id='item1']")[0]
-        assert item.get("hash") is not None
-        assert len(item.get("hash")) > 0
+        assert item.get("hash") == sha1("item1")
 
     def test_add_display_order(self):
         """Test that DisplayOrder property is added."""
@@ -67,7 +67,7 @@ class TestProjectNormalization:
         item = result.getroot().xpath(".//Item[@id='item1']")[0]
         display_order = item.xpath("Property[@name='DisplayOrder']")
         assert len(display_order) == 1
-        assert display_order[0].text in ["0", "50000"]
+        assert display_order[0].text == "0"
 
     def test_exclude_properties(self):
         """Test that excluded properties are removed."""
@@ -127,11 +127,10 @@ class TestProjectSecurityExtraction:
         result = extractor.extract()
 
         scopes = result.getroot().xpath("./Scopes/Scope")
-        # Should have global scope + 1 extracted scope
-        assert len(scopes) >= 2
-        scope_ids = [s.get("scopeId") for s in scopes]
-        assert "scope1" in scope_ids
-        assert "00000000-0000-0000-0000-000000000000" in scope_ids  # Global scope
+        assert [scope.get("scopeId") for scope in scopes] == [
+            "00000000-0000-0000-0000-000000000000",
+            "scope1",
+        ]
 
 
 class TestAuthStoreNormalization:
@@ -158,13 +157,22 @@ class TestAuthStoreNormalization:
 
     def test_parse_identity_property(self):
         """Test that Identity properties are correctly parsed."""
-        normalizer = AuthstoreNormalizer(etree.ElementTree(etree.Element("root")))
+        tree = etree.ElementTree(
+            etree.fromstring(
+                b'<Project><Item id="user" name="Alice" '
+                b'type="Citect.Ampla.StandardItems.User"><Property '
+                b'name="Identity">DOMAIN\\user|S-1-5-21-123-456-789|OTHER'
+                b"</Property></Item></Project>"
+            )
+        )
+        result = ProjectSecurityExtractor(tree).extract()
 
-        # Test parsing of pipe-separated identity format
-        test_value = "DOMAIN\\user|S-1-5-21-123-456-789|OTHER"
-        parts = test_value.split("|")
-        assert parts[0] == "DOMAIN\\user"
-        assert parts[1] == "S-1-5-21-123-456-789"
+        identity = result.xpath(
+            "./Users/User[@id='user']/Property[@name='Identity']/Identity"
+        )[0]
+        assert identity.get("name") == "DOMAIN\\user"
+        assert identity.get("sid") == "S-1-5-21-123-456-789"
+        assert identity.text == "DOMAIN\\user|S-1-5-21-123-456-789|OTHER"
 
 
 class TestSpecializedTransforms:
@@ -192,7 +200,10 @@ class TestSpecializedTransforms:
         )
         assert len(cycles_prop) == 1
         item_links = cycles_prop[0].xpath("./ItemLink")
-        assert len(item_links) >= 1
+        assert [link.get("absolutePath") for link in item_links] == [
+            "Cycle1",
+            "Cycle2",
+        ]
 
     def test_resolver_defaults(self):
         """Test Resolver default properties."""
@@ -212,9 +223,8 @@ class TestSpecializedTransforms:
         action = item.xpath("Property[@name='Action']")
         resolver_op = item.xpath("Property[@name='ResolverOperation']")
 
-        # Defaults should be added
-        assert len(action) >= 0  # May or may not be present depending on implementation
-        assert len(resolver_op) >= 0
+        assert [prop.text for prop in action] == ["Module"]
+        assert [prop.text for prop in resolver_op] == ["Sum"]
 
     def test_user_authentication_default(self):
         """Test User default Authentication property."""
@@ -231,7 +241,7 @@ class TestSpecializedTransforms:
 
         item = result.getroot().xpath(".//Item[@id='user1']")[0]
         auth = item.xpath("Property[@name='Authentication']")
-        assert len(auth) >= 0  # May have default or not
+        assert [prop.text for prop in auth] == ["WindowsIntegrated"]
 
 
 class TestEndToEndPipeline:
@@ -250,14 +260,13 @@ class TestEndToEndPipeline:
         normalizer = ProjectNormalizer(tree)
         result = normalizer.normalize()
 
-        # Verify result is valid XML
-        assert result.getroot() is not None
         assert result.getroot().tag == "Project"
-
-        # Should be able to serialize to string
-        xml_str = etree.tostring(result, encoding="unicode")
-        assert len(xml_str) > 0
-        assert "<Project>" in xml_str
+        assert result.xpath("./Properties/ProjectProperty[@name='name']/text()") == [
+            "TestProject"
+        ]
+        assert result.xpath(
+            ".//Item[@id='item1']/Property[@name='TestProp']/text()"
+        ) == ["TestValue"]
 
     def test_pipeline_deterministic(self):
         """Test that pipeline produces deterministic output."""
@@ -276,14 +285,8 @@ class TestEndToEndPipeline:
         tree2 = etree.ElementTree(etree.fromstring(xml_str.encode()))
         result2 = ProjectNormalizer(tree2).normalize()
 
-        # Both should produce same structure
-        str1 = etree.tostring(result1, encoding="unicode")
-        str2 = etree.tostring(result2, encoding="unicode")
-
-        # May differ in whitespace, but structure should be identical
-        assert result1.getroot().tag == result2.getroot().tag
-        assert len(result1.getroot().xpath(".//*")) == len(
-            result2.getroot().xpath(".//*")
+        assert etree.tostring(result1, method="c14n") == etree.tostring(
+            result2, method="c14n"
         )
 
 

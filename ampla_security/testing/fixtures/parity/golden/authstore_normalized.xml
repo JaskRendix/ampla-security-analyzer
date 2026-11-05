@@ -1,0 +1,26 @@
+<Security name="ValidatorFixture">
+  <Operations>
+    <Operation operationId="operation-read" name="Read" description="Read access">
+      <Links>
+        <RoleLink name="Reader" roleId="role-reader"/>
+      </Links>
+    </Operation>
+  </Operations>
+  <RoleDefinitions>
+    <RoleDefinition roleId="role-reader" name="Reader" description="Read-only role">
+      <Operation name="Read"/>
+    </RoleDefinition>
+  </RoleDefinitions>
+  <Scopes>
+    <Scope name="{Global}" scopeId="00000000-0000-0000-0000-000000000000" valid="Default scope"/>
+    <Scope name="Site.Area 1" scopeId="area" valid="Scope is Valid"/>
+  </Scopes>
+  <Users>
+    <User id="user-alice" name="Alice" type="Citect.Ampla.StandardItems.User" fullName="Site.Area 1.Alice" hash="GENERATED">
+      <Property name="Authentication">WindowsIntegrated</Property>
+      <Property name="Identity">
+        <Identity name="DOMAIN\alice">S-1-5-21-1-2-3-1001</Identity>
+      </Property>
+    </User>
+  </Users>
+</Security>

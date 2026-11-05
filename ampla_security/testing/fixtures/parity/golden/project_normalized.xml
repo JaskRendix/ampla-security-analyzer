@@ -1,0 +1,19 @@
+<Project>
+  <Properties>
+    <ProjectProperty name="Platform.Version">4.4.0</ProjectProperty>
+    <ProjectProperty name="Applications.Version"/>
+    <ProjectProperty name="name">ValidatorFixture</ProjectProperty>
+  </Properties>
+  <Item id="site" name="Site" fullName="Site" hash="GENERATED">
+    <Property name="DisplayOrder">1</Property>
+    <Item id="area" name="Area 1" fullName="Site.Area 1" hash="GENERATED">
+      <Property name="InheritPermissions">False</Property>
+      <Property name="DisplayOrder">2</Property>
+      <Item id="user-alice" name="Alice" type="Citect.Ampla.StandardItems.User" fullName="Site.Area 1.Alice" hash="GENERATED">
+        <Property name="DisplayOrder">1</Property>
+        <Property name="Identity">DOMAIN\alice|S-1-5-21-1-2-3-1001|&lt;NULL&gt;</Property>
+        <Property name="Authentication">WindowsIntegrated</Property>
+      </Item>
+    </Item>
+  </Item>
+</Project>
