@@ -352,7 +352,15 @@ class ProjectNormalizer:
         # Apply specialized property transforms
         parent_type = parent_item.get("type") if parent_item is not None else None
 
-        # Hook: Cycles in CycleManager
+        if self._has_soap_envelope(property_node):
+            if parent_type == "Citect.Ampla.Connectors.OleDbConnector.OleDbAdapter":
+                return self.normalize_oledb_soap_property(property_node)
+            return self.normalize_soap_property(property_node)
+        if prop_name == "EquipmentTypes":
+            return self.normalize_equipment_types_property(property_node)
+        if prop_name and "Subscription" in prop_name:
+            return self.normalize_subscriptions_property(property_node, parent_item)
+
         if (
             parent_type == "Citect.Ampla.General.Server.RecordStates.CycleManager"
             and prop_name == "Cycles"
@@ -378,6 +386,120 @@ class ProjectNormalizer:
 
         self._normalize_item_children(normalized, parent_item)
         return normalized
+
+    def _has_soap_envelope(self, property_node):
+        return bool(
+            property_node.xpath(
+                "./*[local-name()='Envelope' and "
+                "namespace-uri()='http://schemas.xmlsoap.org/soap/envelope/']"
+            )
+        )
+
+    def normalize_soap_property(self, property_node):
+        normalized = etree.Element("Property")
+        if property_node.get("name") is not None:
+            normalized.set("name", property_node.get("name"))
+        normalized.set("isSoap", "true")
+        normalized.text = "{SOAP}"
+        return normalized
+
+    def normalize_oledb_soap_property(self, property_node):
+        normalized = self.normalize_soap_property(property_node)
+        normalized.text = None
+        values = property_node.xpath(
+            ".//*[namespace-uri()='' and string-length(.) > 0]"
+        )
+        if not values:
+            normalized.text = "{SOAP}"
+            return normalized
+
+        for value in values:
+            soap_property = etree.SubElement(normalized, "soap-property")
+            soap_property.set("name", etree.QName(value).localname)
+            soap_property.text = value.xpath("string(.)")
+        return normalized
+
+    def normalize_equipment_types_property(self, property_node):
+        normalized = etree.Element(property_node.tag)
+        for name, value in property_node.attrib.items():
+            normalized.set(name, value)
+        value = property_node.xpath("string(.)")
+        for path in self._csv_values(value):
+            item_link = etree.SubElement(normalized, "ItemLink")
+            item_link.set("absolutePath", path)
+        return normalized
+
+    def _csv_values(self, value):
+        if "," not in value:
+            return [value]
+        first, rest = value.split(",", 1)
+        return [first, *self._csv_values(rest)]
+
+    def normalize_subscriptions_property(self, property_node, parent_item=None):
+        normalized = etree.Element(property_node.tag)
+        for name, value in property_node.attrib.items():
+            normalized.set(name, value)
+
+        value = property_node.xpath("string(.)")
+        if "|" not in value:
+            normalized = copy_node(property_node)
+            self._normalize_item_children(normalized, parent_item)
+            return normalized
+
+        text = etree.SubElement(normalized, "text")
+        text.text = property_node.text
+        for child in property_node:
+            text.append(copy_node(child))
+        self._normalize_item_children(text, parent_item)
+        lines = self._split_subscription_lines(value)
+        for line in lines:
+            self._append_subscription(normalized, line)
+        return normalized
+
+    def _split_subscription_lines(self, value):
+        if "\r\n" in value:
+            line, remainder = value.split("\r\n", 1)
+            return [line, *self._split_subscription_lines(remainder)]
+        if "\r" in value:
+            line, remainder = value.split("\r", 1)
+            return [line, *self._split_subscription_lines(remainder)]
+        return [value]
+
+    def _append_subscription(self, parent, line):
+        if not line:
+            return
+
+        if "|" not in line:
+            parent.append(self._subscription_comment(0, line))
+            return
+
+        item_link = etree.SubElement(parent, "ItemLink")
+        type_name, remainder = line.split("|", 1)
+        item_link.set("type", type_name)
+        fields = remainder.split("|")
+        if len(fields) < 2:
+            item_link.append(self._subscription_comment(1, remainder))
+            return
+        item_link.set("absolutePath", fields[0])
+
+        if len(fields) < 3:
+            item_link.append(self._subscription_comment(2, fields[1]))
+            return
+        item_link.set("event", fields[1])
+
+        if len(fields) < 4:
+            item_link.set("handler", fields[2])
+            return
+        item_link.set("handler", fields[2])
+
+        if len(fields) == 4:
+            item_link.set("expressionMatch", fields[3])
+        else:
+            item_link.append(self._subscription_comment(4, "|".join(fields[3:])))
+
+    def _subscription_comment(self, index, line):
+        prefix = "" if index == 0 else "\n                "
+        return etree.Comment(f"{prefix}Unexpected Subscription [{index}]: {line}")
 
     def _normalize_item_children(self, parent_node, parent_item=None):
         for child in list(parent_node):
