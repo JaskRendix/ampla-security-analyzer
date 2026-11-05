@@ -23,7 +23,7 @@ well-known SID handling.
 
 ## Requirements and installation
 
-- Python 3.10 or later
+- Python 3.11 or later
 - `lxml`
 
 Install the package and development dependencies:

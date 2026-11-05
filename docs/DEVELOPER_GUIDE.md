@@ -20,7 +20,7 @@ directly. The separate `engine/` package is not part of this CLI pipeline.
 
 ## Setup and tests
 
-The project requires Python 3.10 or later and `lxml`. Install development
+The project requires Python 3.11 or later and `lxml`. Install development
 dependencies in a virtual environment:
 
 ```sh
