@@ -5,6 +5,14 @@ from lxml import etree
 from ampla_security.utils.hashing import sha1
 from ampla_security.xml.utils import copy_node
 
+FAVORITE_DESCRIPTOR_TYPE = (
+    "Citect.Ampla.General.Common.FavoriteDescriptor," "Citect.Ampla.General.Common"
+)
+FAVORITE_COLLECTION_TYPE = (
+    "Citect.Ampla.General.Common.FavoriteDescriptorCollection,"
+    "Citect.Ampla.General.Common"
+)
+
 
 class ProjectNormalizer:
     """
@@ -693,74 +701,92 @@ class ProjectNormalizer:
         return normalized
 
     def normalize_home_property(self, property_node):
-        """
-        Normalize Home property values and compute a display text with favorite counts.
-        Counts FavoriteDescriptor items with LocationType='Home'.
-
-        XSLT template:
-        match="Property[@name='Home']"
-        """
-        normalized = copy_node(property_node)
+        normalized = etree.Element("Property")
         normalized.set("name", "Home")
-
-        # Count descendants that are FavoriteDescriptor with LocationType='Home'
-        favorite_descriptors = normalized.xpath(
-            "descendant::*[@type='Citect.Ampla.General.Common.FavoriteDescriptor,Citect.Ampla.General.Common']"
+        home_count = sum(
+            len(descriptor.xpath("Property[@name='LocationType' and text()='Home']"))
+            for descriptor in property_node.xpath(
+                ".//*[@type=$type]", type=FAVORITE_DESCRIPTOR_TYPE
+            )
         )
-        home_count = 0
-        for fd in favorite_descriptors:
-            location_type_elem = fd.xpath("Property[@name='LocationType']")
-            if location_type_elem and location_type_elem[0].text == "Home":
-                home_count += 1
-
-        # Add text element with count
-        text_elem = etree.Element("text")
+        text_elem = etree.SubElement(normalized, "text")
         text_elem.text = f"{{{home_count} Favourite(s)}}"
-        normalized.append(text_elem)
+        for descriptor in property_node.xpath(
+            "Property[@type=$type]", type=FAVORITE_DESCRIPTOR_TYPE
+        ):
+            favorite = self.normalize_favorite_descriptor(descriptor)
+            if favorite is not None:
+                normalized.append(favorite)
 
         return normalized
 
     def normalize_favorites_property(self, property_node):
-        """
-        Normalize Favorites property values, compute counts, and flag corrupt entries.
-        Counts total FavoriteDescriptors and flags any with LocationType != 'Favorite'.
-
-        XSLT template:
-        match="Property[@name='Favorites']"
-        """
-        normalized = copy_node(property_node)
+        normalized = etree.Element("Property")
         normalized.set("name", "Favorites")
-
-        # Count all FavoriteDescriptor items
-        favorite_descriptors = normalized.xpath(
-            "descendant::*[@type='Citect.Ampla.General.Common.FavoriteDescriptor,Citect.Ampla.General.Common']"
+        favorite_descriptors = property_node.xpath(
+            ".//*[@type=$type]", type=FAVORITE_DESCRIPTOR_TYPE
         )
         num_favorites = len(favorite_descriptors)
 
         if num_favorites > 0:
-            # Count corrupt entries (LocationType != 'Favorite')
-            corrupt_count = 0
-            for fd in favorite_descriptors:
-                location_type_elem = fd.xpath("Property[@name='LocationType']")
-                if location_type_elem:
-                    location_type = location_type_elem[0].text
-                    if location_type != "Favorite":
-                        corrupt_count += 1
-
-            # Add text element with count and corruption flag
             text_elem = etree.Element("text")
             text_elem.text = f"{{{num_favorites} Favourite(s)}}"
-
-            if corrupt_count > 0:
+            corrupt_count = sum(
+                len(
+                    descriptor.xpath(
+                        "Property[@name='LocationType' and text() != 'Favorite']"
+                    )
+                )
+                for descriptor in favorite_descriptors
+            )
+            if corrupt_count:
                 text_elem.set("isCorrupt", "true")
-
             normalized.append(text_elem)
+            for collection in property_node.xpath(
+                "Property[@type=$type]", type=FAVORITE_COLLECTION_TYPE
+            ):
+                normalized.append(self.normalize_favorite_collection(collection))
         else:
-            # No favorites, just set text directly
-            # According to XSLT, if no favorites, output the text directly not as element
             normalized.text = "{0 Favorite(s)}"
-
         return normalized
+
+    def normalize_favorite_descriptor(self, descriptor):
+        if not descriptor.xpath("Property[@name='Location']"):
+            return None
+
+        favorite = etree.Element("Favorite")
+        attributes = (
+            ("name", "Name", True),
+            ("module", "Module", True),
+            ("filter", "Filter", False),
+            ("location", "Location", False),
+            ("recurse", "Recurse", False),
+            ("view", "ViewName", False),
+        )
+        for output_name, property_name, required in attributes:
+            values = descriptor.xpath("Property[@name=$name]", name=property_name)
+            if required or values:
+                favorite.set(
+                    output_name,
+                    "".join(values[0].itertext()) if values else "",
+                )
+        return favorite
+
+    def normalize_favorite_collection(self, collection):
+        favorites = etree.Element("Favorites")
+        names = collection.xpath("Property[@name='Name']")
+        favorites.set("name", "".join(names[0].itertext()) if names else "")
+        for nested_collection in collection.xpath(
+            "Item[@type=$type]", type=FAVORITE_COLLECTION_TYPE
+        ):
+            favorites.append(self.normalize_favorite_collection(nested_collection))
+        for descriptor in collection.xpath(
+            "Item[@type=$type]", type=FAVORITE_DESCRIPTOR_TYPE
+        ):
+            favorite = self.normalize_favorite_descriptor(descriptor)
+            if favorite is not None:
+                favorites.append(favorite)
+        return favorites
 
     def copy_node(self, node):
         return copy_node(node)
