@@ -16,7 +16,6 @@ class AuthstoreNormalizer:
     def __init__(self, xml_tree: _ElementTree):
         self.tree: _ElementTree = xml_tree
         self.root: _Element = xml_tree.getroot()
-        self.users_by_sid: dict[str, _Element] = {}
         self.project_security_root: _Element | None = None
 
     def set_project_security(self, project_security: _ElementTree | _Element) -> None:
@@ -30,16 +29,8 @@ class AuthstoreNormalizer:
         self.project_security_root = root
 
     def normalize(self) -> _ElementTree:
-        self._index_users()
-
         normalized_root = self.normalize_authstore_root(self.root)
         return etree.ElementTree(normalized_root)
-
-    def _index_users(self) -> None:
-        for user in self.root.xpath("//User[@sid]"):
-            sid = user.get("sid")
-            if sid:
-                self.users_by_sid[sid] = user
 
     def normalize_authstore_root(self, authstore_root: _Element) -> _Element:
         if authstore_root.tag == "AzAdminManager":
@@ -139,7 +130,7 @@ class AuthstoreNormalizer:
                 identity_property.text = prop.text
                 for identity in prop.xpath("Identity"):
                     identity_element = etree.SubElement(identity_property, "Identity")
-                    if identity.get("name"):
+                    if "name" in identity.attrib:
                         identity_element.set("name", identity.get("name"))
                     identity_element.text = identity.get("sid", "")
                     identity_element.tail = identity.tail
@@ -225,29 +216,35 @@ class AuthstoreNormalizer:
         return normalized
 
     def normalize_member(self, member_node: _Element) -> _Element:
-        sid = (member_node.text or "").strip()
+        sid = member_node.xpath("string(.)")
 
         normalized = etree.Element("Member")
         normalized.set("sid", sid)
 
-        if sid.startswith("S-1-5-"):
+        if "S-1-5-" in sid:
             normalized.set("type", "windows")
-        elif sid.startswith("S-1-9-"):
+        elif "S-1-9-" in sid:
             normalized.set("type", "ampla")
         else:
             normalized.set("type", "unknown")
 
-        user = self.resolve_user(sid, self.users_by_sid)
-
-        if user is not None:
-            normalized.append(self.normalize_user(user))
-
+        project_users = (
+            self.project_security_root.xpath("./Users/User")
+            if self.project_security_root is not None
+            else []
+        )
+        matched_users, match_type = self._resolve_project_users(sid, project_users)
+        if match_type == "identity":
+            for user in matched_users:
+                normalized.append(self.normalize_user_by_identity(user))
+        elif match_type == "security_id":
+            for user in matched_users:
+                normalized.append(self.normalize_user_by_security_id(user))
         else:
             account_name = self.lookup_well_known_sid(sid)
             if account_name:
                 account_user = etree.Element("User")
-                account_user.set("sid", sid)
-                account_user.set("name", account_name)
+                account_user.set("name", sid)
 
                 identity = etree.Element("Identity")
                 identity.set("name", account_name)
@@ -258,7 +255,6 @@ class AuthstoreNormalizer:
 
             else:
                 direct_user = etree.Element("User")
-                direct_user.set("sid", sid)
                 direct_user.text = sid
                 normalized.append(direct_user)
 
@@ -353,31 +349,47 @@ class AuthstoreNormalizer:
         return normalized
 
     def resolve_user(self, sid: str, project_users: Any) -> _Element | None:
+        matched_users, _ = self._resolve_project_users(sid, project_users)
+        return matched_users[0] if matched_users else None
+
+    def _resolve_project_users(
+        self, sid: str, project_users: Any
+    ) -> tuple[list[_Element], str | None]:
         if project_users is None:
             project_users = []
-
         if isinstance(project_users, dict):
-            user = project_users.get(sid)
-            if user is not None:
-                return user
             project_users = list(project_users.values())
+        else:
+            project_users = list(project_users)
 
-        for user in project_users:
-            if user is None:
-                continue
+        identity_users = self._find_users_by_identity(sid, project_users)
+        if identity_users:
+            return identity_users, "identity"
+        security_id_users = self._find_users_by_security_id(sid, project_users)
+        if security_id_users:
+            return security_id_users, "security_id"
+        return [], None
 
-            if user.get("sid") == sid:
-                return user
+    def _find_users_by_identity(self, sid: str, project_users: Any) -> list[_Element]:
+        return [
+            user
+            for user in project_users
+            if user is not None
+            and user.xpath("Property[@name='Identity']/Identity[@sid=$sid]", sid=sid)
+        ]
 
-            security_prop = user.find("Property[@name='SecurityID']")
-            if security_prop is not None and (security_prop.text or "").strip() == sid:
-                return user
-
-            identity = user.find("Property[@name='Identity']/Identity")
-            if identity is not None and identity.get("sid") == sid:
-                return user
-
-        return self.users_by_sid.get(sid)
+    def _find_users_by_security_id(
+        self, sid: str, project_users: Any
+    ) -> list[_Element]:
+        return [
+            user
+            for user in project_users
+            if user is not None
+            and user.xpath(
+                "Property[@name='SecurityID']/text() = $sid",
+                sid=sid,
+            )
+        ]
 
     def lookup_well_known_sid(self, sid: str) -> str:
         well_known = {
@@ -391,22 +403,6 @@ class AuthstoreNormalizer:
         if sid in well_known:
             return well_known[sid]
 
-        if sid.startswith("S-1-5-21-"):
-            parts = sid.split("-")
-            if len(parts) >= 4:
-                last3 = parts[-1]
-                domain = "-".join(parts[3:-1])
-
-                account_map = {
-                    "500": "Administrator",
-                    "512": "Domain Administrators",
-                    "513": "Domain Users",
-                }
-
-                account = account_map.get(last3)
-                if account:
-                    return f"({domain})/{account}"
-
         return ""
 
     def normalize_user(self, user_node: _Element) -> _Element:
@@ -415,18 +411,24 @@ class AuthstoreNormalizer:
         for name, value in user_node.attrib.items():
             normalized.set(name, value)
 
-        for prop in user_node.xpath(
-            "Property[@name='Authentication' or @name='SecurityID']"
-        ):
-            normalized.append(self.normalize_named_property(prop))
-
-        identity_prop = user_node.find("Property[@name='Identity']/Identity")
-        if identity_prop is not None:
-            normalized.append(self.normalize_identity(identity_prop))
-
-        if user_node.get("sid"):
-            normalized.set("sid", user_node.get("sid"))
-            normalized.set("identifier", user_node.get("sid"))
+        for property_name in ("Authentication", "SecurityID", "Identity"):
+            properties = user_node.xpath(f"Property[@name='{property_name}']")
+            for prop in properties:
+                if property_name == "Identity":
+                    normalized_property = etree.Element("Property")
+                    for name, value in prop.attrib.items():
+                        normalized_property.set(name, value)
+                    normalized_property.text = prop.text
+                    for child in list(prop):
+                        if child.tag == "Identity":
+                            normalized_child = self.normalize_identity(child)
+                            normalized_child.tail = child.tail
+                        else:
+                            normalized_child = copy_node(child)
+                        normalized_property.append(normalized_child)
+                else:
+                    normalized_property = self.normalize_named_property(prop)
+                normalized.append(normalized_property)
 
         return normalized
 
@@ -434,11 +436,10 @@ class AuthstoreNormalizer:
         normalized = etree.Element("User")
 
         for attr in ["name", "id", "hash"]:
-            if user_node.get(attr):
+            if attr in user_node.attrib:
                 normalized.set(attr, user_node.get(attr))
 
-        identity = user_node.find("Property[@name='Identity']/Identity")
-        if identity is not None:
+        for identity in user_node.xpath("Property[@name='Identity']/Identity"):
             normalized.append(self.normalize_identity(identity))
 
         return normalized
@@ -447,22 +448,22 @@ class AuthstoreNormalizer:
         normalized = etree.Element("User")
 
         for attr in ["name", "id", "hash"]:
-            if user_node.get(attr):
+            if attr in user_node.attrib:
                 normalized.set(attr, user_node.get(attr))
 
         security_id = user_node.find("Property[@name='SecurityID']")
-        if security_id is not None and security_id.text:
-            normalized.text = security_id.text.strip()
+        if security_id is not None:
+            normalized.text = security_id.xpath("string(.)")
 
         return normalized
 
     def normalize_identity(self, identity_node: _Element) -> _Element:
         normalized = etree.Element("Identity")
 
-        for name, value in identity_node.attrib.items():
-            normalized.set(name, value)
+        if "name" in identity_node.attrib:
+            normalized.set("name", identity_node.get("name"))
 
-        normalized.text = identity_node.get("sid") or (identity_node.text or "").strip()
+        normalized.text = identity_node.get("sid", "")
 
         return normalized
 

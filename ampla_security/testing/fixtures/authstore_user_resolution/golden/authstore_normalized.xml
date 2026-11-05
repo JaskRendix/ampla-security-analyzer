@@ -1,0 +1,88 @@
+<Security name="UserResolution">
+  <Operations/>
+  <RoleDefinitions/>
+  <Scopes>
+    <Scope name="{Global}" scopeId="00000000-0000-0000-0000-000000000000" valid="Default scope"/>
+    <Scope name="Scope" scopeId="scope" invalid="Warning: Scope does not exist in Ampla Project.">
+      <Role roleId="" name="" description="Resolution cases">
+        <Member sid="  whitespace-sid  " type="unknown">
+          <User name="Whitespace Security ID" id="security-whitespace" hash="hash-whitespace">  whitespace-sid  </User>
+        </Member>
+        <Member sid="S-1-5-11" type="windows">
+          <User name="S-1-5-11">
+            <Identity name="Authenticated Users">S-1-5-11</Identity>
+          </User>
+        </Member>
+        <Member sid="S-1-5-21-111-222-333-500" type="windows">
+          <User>S-1-5-21-111-222-333-500</User>
+        </Member>
+        <Member sid="S-1-5-32-544" type="windows">
+          <User name="S-1-5-32-544">
+            <Identity name=".\Administrators">S-1-5-32-544</Identity>
+          </User>
+        </Member>
+        <Member sid="S-1-5-32-545" type="windows">
+          <User name="S-1-5-32-545">
+            <Identity name=".\Users">S-1-5-32-545</Identity>
+          </User>
+        </Member>
+        <Member sid="S-1-5-32-546" type="windows">
+          <User name="S-1-5-32-546">
+            <Identity name=".\Guests">S-1-5-32-546</Identity>
+          </User>
+        </Member>
+        <Member sid="S-1-5-32-547" type="windows">
+          <User name="S-1-5-32-547">
+            <Identity name=".\Power Users">S-1-5-32-547</Identity>
+          </User>
+        </Member>
+        <Member sid="empty-name-sid" type="unknown">
+          <User name="" id="empty-name" hash="hash-empty">
+            <Identity name="">empty-name-sid</Identity>
+          </User>
+        </Member>
+        <Member sid="prefix-S-1-9-42" type="ampla">
+          <User>prefix-S-1-9-42</User>
+        </Member>
+        <Member sid="shared-sid" type="unknown">
+          <User name="Identity First" id="identity-first" hash="hash-first">
+            <Identity name="DOMAIN\first">shared-sid</Identity>
+          </User>
+          <User name="Identity Second" id="identity-second" hash="hash-second">
+            <Identity name="DOMAIN\second">shared-sid</Identity>
+          </User>
+        </Member>
+        <Member sid="unresolved-sid" type="unknown">
+          <User>unresolved-sid</User>
+        </Member>
+        <Member sid="whitespace-sid" type="unknown">
+          <User>whitespace-sid</User>
+        </Member>
+      </Role>
+    </Scope>
+  </Scopes>
+  <Users>
+    <User id="empty-name" name="" hash="hash-empty">
+      <Property name="Identity">
+        <Identity name="">empty-name-sid</Identity>
+      </Property>
+    </User>
+    <User id="identity-first" name="Identity First" hash="hash-first">
+      <Property name="SecurityID">shared-sid</Property>
+      <Property name="Identity">
+        <Identity name="DOMAIN\first">shared-sid</Identity>
+      </Property>
+    </User>
+    <User id="identity-second" name="Identity Second" hash="hash-second">
+      <Property name="Identity">
+        <Identity name="DOMAIN\second">shared-sid</Identity>
+      </Property>
+    </User>
+    <User id="security-id" name="Security ID User" hash="hash-security">
+      <Property name="SecurityID">shared-sid</Property>
+    </User>
+    <User id="security-whitespace" name="Whitespace Security ID" hash="hash-whitespace">
+      <Property name="SecurityID">  whitespace-sid  </Property>
+    </User>
+  </Users>
+</Security>

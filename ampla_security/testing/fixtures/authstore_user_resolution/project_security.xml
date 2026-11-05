@@ -1,0 +1,27 @@
+<Security>
+  <Users>
+    <User id="identity-first" name="Identity First" hash="hash-first">
+      <Property name="Identity">
+        <Identity name="DOMAIN\first" sid="shared-sid">ignored source text</Identity>
+      </Property>
+      <Property name="SecurityID">shared-sid</Property>
+    </User>
+    <User id="identity-second" name="Identity Second" hash="hash-second">
+      <Property name="Identity">
+        <Identity name="DOMAIN\second" sid="shared-sid"/>
+      </Property>
+    </User>
+    <User id="security-id" name="Security ID User" hash="hash-security">
+      <Property name="SecurityID">shared-sid</Property>
+    </User>
+    <User id="security-whitespace" name="Whitespace Security ID" hash="hash-whitespace">
+      <Property name="SecurityID">  whitespace-sid  </Property>
+    </User>
+    <User id="empty-name" name="" hash="hash-empty">
+      <Property name="Identity">
+        <Identity name="" sid="empty-name-sid"/>
+      </Property>
+    </User>
+  </Users>
+  <Scopes/>
+</Security>

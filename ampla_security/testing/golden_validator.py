@@ -54,6 +54,7 @@ _ELEMENT_ONLY_CONTAINERS = {
     "Item",
     "ItemLinkCollection",
     "Links",
+    "Member",
     "Operation",
     "Operations",
     "Project",

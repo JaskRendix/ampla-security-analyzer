@@ -1,0 +1,21 @@
+<AzAdminManager>
+  <AzApplication Name="UserResolution">
+    <User sid="shared-sid" name="AuthStore decoy"/>
+    <AzScope Name="scope" Description="Security scope for Scope">
+      <AzRole Description="Resolution cases">
+        <Member>shared-sid</Member>
+        <Member>whitespace-sid</Member>
+        <Member>  whitespace-sid  </Member>
+        <Member>empty-name-sid</Member>
+        <Member>S-1-5-32-544</Member>
+        <Member>S-1-5-32-545</Member>
+        <Member>S-1-5-32-546</Member>
+        <Member>S-1-5-32-547</Member>
+        <Member>S-1-5-11</Member>
+        <Member>S-1-5-21-111-222-333-500</Member>
+        <Member>unresolved-sid</Member>
+        <Member>prefix-S-1-9-42</Member>
+      </AzRole>
+    </AzScope>
+  </AzApplication>
+</AzAdminManager>
