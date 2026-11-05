@@ -52,6 +52,12 @@ python3 -m ampla_security.cli.analyze \
 defaults to `Output`. Use `--help` to display the command options. Invalid or
 unreadable inputs return a non-zero exit status and an error message.
 
+The optional `--analyze-findings` flag scans the original project XML for
+potentially exposed configuration data and writes `findings.json` to the output
+directory. This heuristic analysis is separate from the legacy reports and
+does not alter their content. Detected property values are not included in the
+findings.
+
 The output directory contains:
 
 | File | Description |
@@ -62,6 +68,7 @@ The output directory contains:
 | `Project.Security.html` | Security report |
 | `Project.Security.Roles.txt` | Roles report |
 | `Project.Security.Assignments.txt` | Assignments report |
+| `findings.json` | Optional configuration exposure findings (`--analyze-findings`) |
 
 Transformations finish before the output artifacts are written.
 

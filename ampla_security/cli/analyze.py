@@ -6,6 +6,8 @@ from pathlib import Path
 
 from lxml import etree
 
+from ampla_security.engine.analyzer import analyze_project_findings
+from ampla_security.engine.finding import serialize_findings
 from ampla_security.normalization.authstore_normalizer import AuthstoreNormalizer
 from ampla_security.normalization.project_normalizer import ProjectNormalizer
 from ampla_security.normalization.project_security_extractor import (
@@ -20,6 +22,7 @@ def run_pipeline(
     project_path: str | Path,
     authstore_path: str | Path,
     output_dir: str | Path,
+    analyze_findings: bool = False,
 ) -> dict[str, Path]:
     """Run normalization, security extraction, and all legacy report generation."""
     project_input = Path(project_path)
@@ -35,6 +38,11 @@ def run_pipeline(
 
     project_tree = load_xml(project_input)
     authstore_tree = load_xml(authstore_input)
+    findings_json = None
+    if analyze_findings:
+        findings = analyze_project_findings(project_tree)
+        findings_json = serialize_findings(findings)
+
     normalized_project = ProjectNormalizer(project_tree).normalize()
     project_security = ProjectSecurityExtractor(normalized_project).extract()
     authstore_normalizer = AuthstoreNormalizer(authstore_tree)
@@ -55,6 +63,8 @@ def run_pipeline(
         "roles_report": output_directory / "Project.Security.Roles.txt",
         "assignments_report": output_directory / "Project.Security.Assignments.txt",
     }
+    if findings_json is not None:
+        outputs["findings_json"] = output_directory / "findings.json"
     normalized_project.write(
         str(outputs["project_normalized"]),
         encoding="UTF-8",
@@ -76,6 +86,8 @@ def run_pipeline(
     outputs["html_report"].write_text(html_report, encoding="utf-8")
     outputs["roles_report"].write_bytes(roles_report.encode("utf-8"))
     outputs["assignments_report"].write_bytes(assignments_report.encode("utf-8"))
+    if findings_json is not None:
+        outputs["findings_json"].write_text(findings_json, encoding="utf-8")
     return outputs
 
 
@@ -88,10 +100,20 @@ def main(argv: list[str] | None = None) -> int:
         default="Output",
         help="Directory for normalized XML and reports (default: Output)",
     )
+    parser.add_argument(
+        "--analyze-findings",
+        action="store_true",
+        help="Scan the original project XML for potentially exposed configuration data",
+    )
     args = parser.parse_args(argv)
 
     try:
-        outputs = run_pipeline(args.project, args.authstore, args.output_dir)
+        outputs = run_pipeline(
+            args.project,
+            args.authstore,
+            args.output_dir,
+            analyze_findings=args.analyze_findings,
+        )
     except (OSError, etree.XMLSyntaxError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

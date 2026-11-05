@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -94,6 +95,90 @@ def test_cli_runs_complete_pipeline_and_generates_all_outputs(tmp_path):
         assert _normalize_line_endings(outputs[output_key].read_bytes()) == (
             _normalize_line_endings(bytes(expected_text))
         )
+
+
+def test_findings_are_opt_in_redacted_and_do_not_change_legacy_outputs(tmp_path):
+    secret = "v1-1-private-db-password"
+    project_tree = etree.parse(str(FIXTURE_DIR / "project.xml"))
+    user = project_tree.xpath(".//Item[@id='user-alice']")[0]
+    etree.SubElement(user, "Property", name="ConnectionString").text = (
+        f"postgresql://scanner:{secret}@database.local/project"
+    )
+    project_input = tmp_path / "project-with-sensitive-value.xml"
+    project_tree.write(
+        str(project_input),
+        encoding="utf-8",
+        xml_declaration=True,
+    )
+    authstore = FIXTURE_DIR / "authstore.xml"
+    baseline_dir = tmp_path / "baseline"
+    findings_dir = tmp_path / "with-findings"
+
+    baseline_result = _run_cli(
+        "--project",
+        str(project_input),
+        "--authstore",
+        str(authstore),
+        "--output-dir",
+        str(baseline_dir),
+    )
+    findings_result = _run_cli(
+        "--project",
+        str(project_input),
+        "--authstore",
+        str(authstore),
+        "--output-dir",
+        str(findings_dir),
+        "--analyze-findings",
+    )
+
+    assert baseline_result.returncode == 0, baseline_result.stderr
+    assert findings_result.returncode == 0, findings_result.stderr
+    legacy_names = (
+        "project.xml",
+        "project.security.xml",
+        "authstore.xml",
+        "Project.Security.html",
+        "Project.Security.Roles.txt",
+        "Project.Security.Assignments.txt",
+    )
+    for filename in legacy_names:
+        assert (baseline_dir / filename).read_bytes() == (
+            findings_dir / filename
+        ).read_bytes()
+
+    assert not (baseline_dir / "findings.json").exists()
+    findings_path = findings_dir / "findings.json"
+    assert findings_path.is_file()
+    findings_content = findings_path.read_text(encoding="utf-8")
+    findings_payload = json.loads(findings_content)
+    assert findings_payload["summary"]["total"] == 1
+    assert findings_payload["findings"][0]["location"]["propertyName"] == (
+        "ConnectionString"
+    )
+    assert secret not in findings_content
+    assert "postgresql://scanner:" not in findings_content
+    assert secret not in findings_result.stdout
+    assert secret not in findings_result.stderr
+    assert len(findings_result.stdout.splitlines()) == 7
+
+
+def test_findings_cli_emits_empty_document_when_no_rule_matches(tmp_path):
+    output_dir = tmp_path / "empty-findings"
+    result = _run_cli(
+        "--project",
+        str(FIXTURE_DIR / "project.xml"),
+        "--authstore",
+        str(FIXTURE_DIR / "authstore.xml"),
+        "--output-dir",
+        str(output_dir),
+        "--analyze-findings",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads((output_dir / "findings.json").read_text(encoding="utf-8"))
+    assert payload["summary"]["total"] == 0
+    assert payload["findings"] == []
 
 
 def test_cli_returns_nonzero_with_actionable_missing_input_error(tmp_path):

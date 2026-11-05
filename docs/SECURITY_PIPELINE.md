@@ -27,6 +27,11 @@ Both input options are required. The output directory defaults to `Output`.
 The command returns a non-zero status when inputs cannot be read or parsed.
 Use `--help` for the supported options.
 
+Add `--analyze-findings` to run the optional configuration exposure scan on
+the original project XML. It writes `findings.json` in the output directory.
+The scan does not change the six legacy artifacts. Its findings are
+heuristic, and detected property values are excluded from the JSON.
+
 Output artifact names:
 
 - `project.xml`
@@ -35,6 +40,7 @@ Output artifact names:
 - `Project.Security.html`
 - `Project.Security.Roles.txt`
 - `Project.Security.Assignments.txt`
+- `findings.json` (optional; only with `--analyze-findings`)
 
 ## Reports
 

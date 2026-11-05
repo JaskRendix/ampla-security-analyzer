@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ampla_security.engine.registry import registry
+from ampla_security.engine.finding import Finding, FindingLocation
 
 
 class MissingPermissionRule:
@@ -104,9 +104,6 @@ class MissingPermissionRule:
         return findings
 
 
-registry.register(MissingPermissionRule())
-
-
 class WeakAuthenticationConfigRule:
     """
     Flags insecure authentication configuration patterns.
@@ -139,9 +136,6 @@ class WeakAuthenticationConfigRule:
                 )
 
         return findings
-
-
-registry.register(WeakAuthenticationConfigRule())
 
 
 class ExposedConfigurationDataRule:
@@ -187,14 +181,15 @@ class ExposedConfigurationDataRule:
         re.compile(r"[\\/]\.ssh([\\/]|$)", re.IGNORECASE),
     ]
 
-    def apply(self, context: Any) -> list[dict[str, Any]]:
-        findings: list[dict[str, Any]] = []
+    rule_id = "exposed-configuration-data"
+
+    def apply(self, context: Any) -> list[Finding]:
+        findings: list[Finding] = []
+        occurrences: dict[tuple[str, str], int] = {}
 
         for item in context.find(self.match):
             item_id = item.get("id")
-            item_name = (
-                item.get("fullName") or item.get("name") or item_id or "<unknown>"
-            )
+            item_path = item.getroottree().getpath(item)
 
             for prop in item.findall("Property"):
                 prop_name = (prop.get("name") or "").strip()
@@ -205,14 +200,27 @@ class ExposedConfigurationDataRule:
                 if self.is_sensitive_name(prop_name) or self.is_sensitive_value(
                     prop_value
                 ):
+                    key = (item_path, prop_name)
+                    occurrence = occurrences.get(key, 0) + 1
+                    occurrences[key] = occurrence
                     findings.append(
-                        {
-                            "severity": "Warning",
-                            "message": (
-                                f"Item '{item_name}' exposes sensitive configuration data in property '{prop_name}'."
+                        Finding.create(
+                            rule_id=self.rule_id,
+                            severity="warning",
+                            title="Potentially sensitive configuration data",
+                            message=(
+                                "A project property matched a sensitive-data "
+                                "detection heuristic. The property value is not "
+                                "included."
                             ),
-                            "itemId": item_id,
-                        }
+                            source_stage="project-input",
+                            location=FindingLocation(
+                                item_id=item_id,
+                                item_path=item_path,
+                                property_name=prop_name or None,
+                            ),
+                            occurrence=occurrence,
+                        )
                     )
 
         return findings
@@ -230,9 +238,6 @@ class ExposedConfigurationDataRule:
         if any(pattern.search(prop_value) for pattern in self.sensitive_path_patterns):
             return True
         return False
-
-
-registry.register(ExposedConfigurationDataRule())
 
 
 class MissingRoleAssignmentRule:
@@ -304,6 +309,3 @@ class MissingRoleAssignmentRule:
                 )
 
         return findings
-
-
-registry.register(MissingRoleAssignmentRule())
