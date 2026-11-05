@@ -1,145 +1,78 @@
-# **Developer Guide — Ampla Security Python Engine**
+# Developer Guide
 
-## 1. Project Structure
-```
+## Repository layout
+
+```text
 ampla_security/
-├── cli/                 # CLI entry point
-├── engine/              # Rule engine
-│   ├── dispatcher.py
-│   ├── registry.py
-│   ├── context.py
-│   └── rules/
-├── normalization/       # Normalization pipeline
-├── reporting/           # HTML output
-├── xml/                 # XML utilities
-├── utils/               # Helpers (hashing, ids, logging)
-└── testing/             # Tests + golden validator
+├── cli/                 # Command-line pipeline
+├── normalization/       # Project, security, and AuthStore transforms
+├── reporting/           # HTML and text reports
+├── testing/             # pytest modules, fixtures, and parity validator
+├── utils/               # Shared helpers
+└── xml/                 # XML loading and utilities
+src/StyleSheets/         # Original XSLT references
+docs/                    # Current documentation and migration history
 ```
 
----
+The CLI pipeline is implemented in
+`ampla_security/cli/analyze.py`. It invokes the normalizers and reporters
+directly. The separate `engine/` package is not part of this CLI pipeline.
 
-## 2. Adding Rules
+## Setup and tests
 
-### Rule Definition
-```python
-class MyCustomRule(Rule):
-    match = "//Item[@type='SomeType']"
-    category = "project"
-    priority = 10
+The project requires Python 3.10 or later and `lxml`. Install development
+dependencies in a virtual environment:
 
-    def apply(self, context):
-        findings = []
-        for item in context.select(self.match):
-            if self.check_condition(item):
-                findings.append({
-                    "severity": "warning",
-                    "message": f"Issue in {item.get('name')}",
-                    "item_id": item.get("id"),
-                })
-        return findings or None
+```sh
+python3 -m pip install -e ".[dev]"
 ```
 
-### Registration
-```python
-registry.register_rule("project", MyCustomRule(), priority=10)
+On systems where the interpreter is named `python`, substitute `python`.
+Run the complete suite:
+
+```sh
+python3 -m pytest -q
 ```
 
-### Test
-```python
-context = EngineContext(tree, None)
-assert MyCustomRule().apply(context)
+Tests live in `ampla_security/testing/`. Parity tests use the original XSLT
+files and checked-in input/output fixtures. Review
+[Parity Validation](PARITY_VALIDATION_STRATEGY.md) before changing canonical
+comparison rules or goldens.
+
+## Pipeline
+
+```sh
+python3 -m ampla_security.cli.analyze \
+  --project project.xml \
+  --authstore authstore.xml \
+  --output-dir Output
 ```
 
----
+The CLI writes three XML intermediates and the HTML, roles, and assignments
+reports. The optional language-document parameter is currently available
+through the `ProjectNormalizer` API; the CLI does not expose a language
+document option.
 
-## 3. Extending the Pipeline
+## Changing behavior
 
-### New Normalizer
-```python
-class CustomNormalizer:
-    def normalize(self):
-        root = etree.Element("Root")
-        return etree.ElementTree(root)
-```
+When modifying a normalizer or reporter:
 
-### Integration
-```python
-normalizer = CustomNormalizer(tree)
-output = normalizer.normalize()
-```
+1. Locate the corresponding XSLT template and existing Python method in
+   [Normalization Mapping](NORMALIZATION_MAPPING.md).
+2. Add or update a focused fixture and test that asserts the expected output.
+3. Compare output with the reference XSLT when the corresponding transform is
+   available.
+4. Run the focused test and the full suite.
+5. Update the relevant user or parity documentation if observable behavior or
+   an accepted comparison difference changes.
 
-### XML Utilities
-```python
-def custom_xpath_helper(el, pattern):
-    return el.xpath(pattern)
-```
+Do not broaden canonicalization to hide a structural or semantic difference.
+Do not regenerate expected files without reviewing the XSLT output.
 
----
+## Documentation
 
-## 4. Testing Strategy
-
-### Unit Tests
-```python
-result = function_under_test(input)
-assert result == expected
-```
-
-### Integration Tests
-```python
-project = normalize_project(xml)
-security = extract_security(project)
-authstore = normalize_authstore(xml)
-assert verify_integrity(project, authstore)
-```
-
-### End‑to‑End
-```python
-results = run_pipeline(project_file, authstore_file)
-assert results.has_findings
-```
-
-### Golden Files
-```python
-validator = GoldenValidator(".")
-results = validator.validate_pipeline("p.xml", "a.xml")
-assert results["comparisons"]["project_normalized"]["identical"]
-```
-
----
-
-## 5. Performance
-
-- Context indexes:  
-  - `items_by_id`  
-  - `items_by_type`  
-  - `properties_by_name`  
-- Rule ordering:  
-  1. Specific XPath  
-  2. Priority  
-  3. Declaration order  
-
----
-
-## 6. Debugging
-
-### Logging
-```python
-logger.setLevel(logging.DEBUG)
-```
-
-### XML Inspection
-```python
-print(etree.tostring(el, pretty_print=True).decode())
-```
-
-### Rule Debugging
-```python
-print(f"Applying {self.__class__.__name__}")
-```
-
----
-
-## 7. References
-- **Security Pipeline**  
-- **Normalization Reference**  
-- **XSLT Stylesheets**  
+- [Security Pipeline](SECURITY_PIPELINE.md) describes the CLI stages and
+  artifacts.
+- [Security Analysis](SECURITY_ANALYSIS.md) describes report content.
+- [Parity Validation](PARITY_VALIDATION_STRATEGY.md) defines tests and
+  comparison rules.

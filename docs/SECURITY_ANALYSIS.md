@@ -1,148 +1,46 @@
-# **Security Analysis Pipeline**
+# Security Analysis
 
-## 1. Pipeline Overview
-Two phases:
+The Python application generates its security report from a normalized
+`Security` document. It does not treat arbitrary XML matches as security
+findings.
 
-1. **Normalization** — Convert project, document, and AuthStore XML into a consistent schema.  
-2. **Security Analysis** — Apply XSLT rule templates to detect issues and generate HTML reports.
+## Pipeline inputs
 
-Pipeline is deterministic and template‑driven.
+- Project XML supplies project items, users, scopes, identities, and security
+  properties.
+- AuthStore XML supplies operations, roles, tasks, scopes, and role members.
 
----
+Project security extraction provides the user and scope data used during
+AuthStore normalization. Member resolution checks project Identity matches,
+SecurityID matches, well-known SIDs, and then the unresolved-user fallback.
+Project and AuthStore scopes are reconciled and marked according to the
+normalization rules.
 
-## 2. Architecture
+## HTML report
 
-### Directory Structure
-```
-StyleSheets/
-  Project.Normalize.xslt
-  Authstore.Normalize.xslt
-  Project.Security.xslt
-  Document.Security.xslt
-  Document.Security.Text.xslt
-External/css/security.css
-AnalyseSecurity.cmd
-```
+The report is based on `Document.Security.xslt` and includes:
 
-Each XSLT corresponds to a pipeline stage.
+- roles by operation;
+- valid and invalid scopes;
+- user authentication and identity details;
+- allowed, denied, and invalid assignments; and
+- scope listings.
 
----
+The report escapes text values and includes the legacy report structure,
+stylesheet reference, and navigation anchors. The roles and assignments text
+reports are generated separately from the same normalized `Security`
+document.
 
-## 3. Data Flow
+## Implementation references
 
-```
-Input XML
- → Normalize.xslt
-     → Normalized XML
-         → Security.xslt
-             → HTML Report
-```
+- `ampla_security/normalization/project_security_extractor.py` extracts
+  project users and scopes.
+- `ampla_security/normalization/authstore_normalizer.py` builds the normalized
+  `Security` document and resolves members.
+- `ampla_security/reporting/html_reporter.py` renders the HTML report.
+- `ampla_security/reporting/security_text_reporter.py` renders both text
+  reports.
+- `src/StyleSheets/` contains the reference XSLT stylesheets.
 
-Inputs:
-- Project XML  
-- AuthStore XML  
-- Optional document XML/text  
-
-Outputs:
-- Project.Security.html  
-- Document.Security.html  
-- Authstore.Security.html  
-
----
-
-## 4. Normalization
-
-### XSLTs
-- `Project.Normalize.xslt`  
-- `Authstore.Normalize.xslt`
-
-### Responsibilities
-- Restructure XML  
-- Remove irrelevant nodes  
-- Compute metadata  
-- Resolve references  
-- Standardize naming  
-- Inject defaults  
-- Validate relationships  
-
-### Template → Function Mapping
-| XSLT Template | Role | Python Equivalent |
-|---|---|---|
-| `match="/Ampla"` | Project root | `normalize_project_ampla()` |
-| `match="Item[@id]"` | Item normalization | `normalize_item()` |
-| `name="addItemAttributes"` | Derived metadata | `add_item_attributes()` |
-| `match="AzRole"` | Role normalization | `normalize_role()` |
-| `name="lookupWellKnownSid"` | SID resolution | `lookup_well_known_sid()` |
-
-This mapping defines Python function boundaries.
-
----
-
-## 5. Security Analysis
-
-### XSLTs
-- `Project.Security.xslt`  
-- `Document.Security.xslt`  
-- `Document.Security.Text.xslt`
-
-### Responsibilities
-- Detect misconfigured permissions  
-- Validate roles and scopes  
-- Check broken references  
-- Identify insecure XML constructs  
-- Flag injection‑prone content  
-
-Each `<xsl:template match="...">` is a rule.
-
-### Python Rule Mapping
-```python
-def rule_missing_scope(node, ctx):
-    if node.tag == "Scope" and not ctx.scope_exists(node):
-        return HighRisk("Scope missing in project")
-```
-
----
-
-## 6. Command Script Behavior
-
-`AnalyseSecurity.cmd` performs:
-
-1. Apply normalization XSLT  
-2. Apply security XSLT  
-3. Write HTML output  
-
-Two‑step transform:
-```
-Input → Normalize.xslt → Normalized → Security.xslt → HTML
-```
-
----
-
-## 7. Python Migration Plan
-
-### Phase 1 — Infrastructure
-- Package layout  
-- CLI  
-- XML engine (`lxml`)  
-
-### Phase 2 — Template Dispatcher
-- Match rules  
-- Precedence  
-- Context indexing  
-
-### Phase 3 — Port Normalization XSLTs
-- Template → function  
-- Named templates → helpers  
-- Match patterns → dispatch rules  
-
-### Phase 4 — Port Security XSLTs
-- Template → rule  
-- Output blocks → HTML generator  
-
-### Phase 5 — Pipeline Orchestration
-- Replace `.cmd` script  
-- Logging and error handling  
-
-### Phase 6 — Testing
-- Compare Python output to XSLT output  
-- Golden‑file regression suite  
+Report behavior is tested against live XSLT output and checked-in fixtures in
+`ampla_security/testing/fixtures/security_report/`.

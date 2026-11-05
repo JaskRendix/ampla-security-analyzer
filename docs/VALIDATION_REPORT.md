@@ -1,87 +1,47 @@
-# Golden‑File Validation Report
+# Validation Status
 
-## Summary
-Python and XSLT pipelines both execute.  
-Architectures differ.  
-Core logic works, but structural mismatches prevent golden‑file parity.
+This report records the repository validation status after B01–B17 were
+implemented.
 
----
+## Automated tests
 
-## Architecture Differences
-- Python uses an **AuthStore** intermediate model; XSLT outputs **Security** directly.  
-- Python injects security data via methods; XSLT uses parameters.  
-- Python hashes IDs with **SHA1**; XSLT uses **generate-id()**.  
-- Python applies version‑based defaults; XSLT uses static values.
+The complete pytest suite passes: **76 tests passed**. The suite contains
+**17 test modules** covering:
 
-These are design divergences, not regressions.
+- project normalization and specialized transforms;
+- project security extraction;
+- AuthStore schema, scopes, role links, and user resolution;
+- HTML and text reports;
+- CLI end-to-end behavior; and
+- the XML golden/parity validator.
 
----
+The test command is:
 
-## Findings
-
-### 1. Project Normalized XML
-**Status:** Differences, not defects.
-
-- Hash values differ (SHA1 vs. generate-id).  
-- DisplayOrder differs (50000 vs. 0).  
-- Formatting differences.
-
-**Impact:** Low. Structure and semantics match.
-
----
-
-### 2. AuthStore Normalized XML
-**Status:** Structural mismatch.
-
-Python:
-```
-<AuthStore>
-  <AuthorizationApplication>…</AuthorizationApplication>
-</AuthStore>
+```sh
+python -m pytest -q
 ```
 
-XSLT:
-```
-<Security>
-  <Operations/>
-  <RoleDefinitions/>
-  <Scopes/>
-  <Users/>
-</Security>
-```
+The latest recorded coverage is **83% statement coverage** across
+`ampla_security`. This is a code-coverage measure; it is not a weighted
+migration-parity score.
 
-Python produces an internal representation; XSLT produces the final schema.
+## Parity checks
 
-**Impact:** Critical. Parity impossible until Python emits the XSLT schema.
+The executable validator compares Python and XSLT outputs for:
 
----
+1. normalized project XML;
+2. extracted project security XML; and
+3. normalized AuthStore/Security XML.
 
-### 3. HTML Security Report
-**Status:** Not comparable.
+The HTML and both text reports have separate live-XSLT and golden-output
+comparisons in pytest. The validation strategy documents canonicalization and
+the limits of parity claims.
 
-HTML differences stem from the mismatched XML input.  
-Blocked until AuthStore output matches XSLT’s Security format.
+## Interpretation
 
----
-
-## Required Actions
-
-### Priority 1
-- Decide whether Python should:
-  - **Output Security XML directly**, or
-  - **Add a SecurityTransformer** to convert AuthStore → Security.
-
-This is the blocker for golden‑file parity.
-
-### Priority 2
-- Align or document hash algorithm differences.  
-- Align or document DisplayOrder logic.  
-- Add regression tests with explicit “expected differences.”
-
----
-
-## Next Steps
-1. Confirm intended Python output format.  
-2. Implement Security output path.  
-3. Re‑run golden‑file validation.  
-4. Update test suite and documentation.
+Generated `hash` values intentionally differ because Python uses SHA1 while
+the XSLT uses `generate-id()`. Tests compare hash attribute presence and
+location. Serializer formatting is canonicalized narrowly. No weighted
+behavior-coverage calculation has been performed, so the 90% migration
+completeness estimate remains qualitative and does not establish a >90% parity
+claim.

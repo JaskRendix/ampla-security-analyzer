@@ -1,168 +1,135 @@
-# **Ampla Security Python Engine**
+# Ampla Security Analysis
 
-A Python implementation of the Ampla security‑analysis pipeline.  
-This engine replaces the original XSLT system with a modular and testable architecture.
+A Python implementation of the Ampla Security Analysis pipeline. It replaces
+the original XSLT orchestration with a Python command-line pipeline while
+retaining the XSLT stylesheets as behavioral references and parity-test
+fixtures.
 
-**Original XSLT implementation:**  
-[https://github.com/Ampla/SecurityAnalysis](https://github.com/Ampla/SecurityAnalysis)
+The migration is complete for the behaviors recorded in the migration history.
+The project is in maintenance mode. The estimated migration completeness is
+90%; this is a qualitative assessment, not a weighted parity measurement.
 
----
+## What the system does
 
-## **Features**
+The pipeline accepts a project XML file and an AuthStore XML file. It:
 
-### **Normalization Pipeline**
-- Project structure normalization  
-- Metadata extraction  
-- Hash computation  
-- Property filtering  
-- Type and reference processing  
-- Class definition handling  
-- Expression parsing  
-- AuthStore normalization  
-- User, role, and scope mapping  
-- Specialized transforms:
-  - CycleManager cycles  
-  - Resolver defaults  
-  - Historical expression annotation  
-  - Home and Favorites counters  
+1. Normalizes project XML.
+2. Extracts project security users and scopes.
+3. Normalizes AuthStore data and reconciles it with project security.
+4. Generates the Security HTML report.
+5. Generates the roles and assignments text reports.
 
-### **Security Analysis**
-- Rule engine  
-- XPath‑style pattern matching  
-- Context indexing  
-- Permission and scope validation  
-- HTML reporting  
+Project normalization includes item paths and hashes, selective property
+handling, class definitions, translations, expressions, DecisionMatrix items,
+Favorites, SOAP payloads, EquipmentTypes, and subscriptions. AuthStore
+normalization includes operations, role links, scopes, member resolution, and
+well-known SID handling.
 
-### **Tooling**
-- CLI interface  
-- Python API  
-- Golden‑file validation  
-- Functional and integration tests  
-- Full documentation  
+## Requirements and installation
 
----
+- Python 3.10 or later
+- `lxml`
 
-## **Installation**
+Install the package and development dependencies:
 
-### **Requirements**
-- Python **3.10+**  
-- `lxml`  
-
-### **Install**
-
-```bash
-git clone <repository>
-cd SecurityAnalysis-master
-
+```sh
 python3 -m venv .venv
 source .venv/bin/activate
-
-pip install .
+python3 -m pip install -e ".[dev]"
 ```
 
-For development:
+On Windows, use `py -3` in place of `python3` and activate the environment
+with `.venv\Scripts\activate`.
 
-```bash
-pip install .[dev]
-```
+## Command-line interface
 
----
+Run the complete pipeline:
 
-## **CLI Usage**
-
-```bash
-python -m ampla_security.cli.analyze \
+```sh
+python3 -m ampla_security.cli.analyze \
   --project AmplaProject.xml \
   --authstore AuthStore.xml \
   --output-dir Output
 ```
 
-### **Options**
+`--project` and `--authstore` are required. `--output-dir` is optional and
+defaults to `Output`. Use `--help` to display the command options. Invalid or
+unreadable inputs return a non-zero exit status and an error message.
 
-```
---help
---project PROJECT_XML
---authstore AUTHSTORE_XML
---output-dir OUTPUT_DIRECTORY
-```
+The output directory contains:
 
-The output directory contains the normalized intermediates (`project.xml`,
-`project.security.xml`, and `authstore.xml`) plus the legacy reports
-(`Project.Security.html`, `Project.Security.Roles.txt`, and
-`Project.Security.Assignments.txt`). The default output directory is `Output`.
+| File | Description |
+|---|---|
+| `project.xml` | Normalized project |
+| `project.security.xml` | Extracted project security data |
+| `authstore.xml` | Normalized Security document |
+| `Project.Security.html` | Security report |
+| `Project.Security.Roles.txt` | Roles report |
+| `Project.Security.Assignments.txt` | Assignments report |
 
----
+Transformations finish before the output artifacts are written.
 
-## **Python API**
+## Python API
 
 ```python
 from lxml import etree
 from ampla_security.normalization.project_normalizer import ProjectNormalizer
 
-tree = etree.parse("AmplaProject.xml")
-normalizer = ProjectNormalizer(tree, language_document="Language.html")
-normalized = normalizer.normalize()
-
-users = normalized.getroot().xpath("//Item[@type='Citect.Ampla.StandardItems.User']")
-print(len(users))
+project = etree.parse("AmplaProject.xml")
+normalized = ProjectNormalizer(project).normalize()
 ```
 
-`language_document` is optional and accepts a path, an `lxml` element tree, or
-an `lxml` root element. It uses the XSLT language-map format
-`html/body/div[@id]`; a div's `id` matches the source item/class name and its
-normalized text becomes the `translation` attribute. Omitting the language
-document leaves translation attributes absent.
+An optional language document can be passed as `language_document`. It accepts
+a path, an `lxml` element tree, or a root element. Translation entries use the
+original `html/body/div[@id]` format, where the `id` matches an item or class
+name.
 
----
+## Validation and tests
 
-## **Testing**
+Run the full test suite, including coverage:
 
-```bash
-pytest -v
-pytest --cov=ampla_security
+```sh
+python3 -m pytest -q
 ```
 
-Golden‑file validation:
+The suite includes focused normalization tests, XSLT parity comparisons,
+golden-file checks, reporting tests, and CLI integration tests. Current
+coverage is 83% statement coverage; this is not a migration-parity percentage.
 
-```bash
-python -c "from ampla_security.testing.golden_validator import GoldenValidator; \
-           GoldenValidator('.').validate_pipeline('synthetic_project.xml', 'synthetic_authstore.xml')"
+Run the XML parity validator against the committed synthetic corpus:
+
+```sh
+python3 -m ampla_security.testing.golden_validator \
+  --project ampla_security/testing/fixtures/parity/project.xml \
+  --authstore ampla_security/testing/fixtures/parity/authstore.xml \
+  --project-root . \
+  --working-dir working/parity
 ```
 
----
+The validator compares project normalization, project security extraction,
+and AuthStore normalization with the checked-in XSLT pipeline. Dedicated tests
+compare the HTML and text reports with XSLT output and checked-in goldens.
+See [Parity Validation](docs/PARITY_VALIDATION_STRATEGY.md) for comparison
+rules and supported claim boundaries.
 
-## **Architecture**
+## Repository guide
 
-- Modular pipeline: normalization → extraction → analysis → reporting  
-- Rule engine replaces XSLT templates  
-- Deterministic hashing  
-- Structured error handling  
-- Version‑aware defaults  
+- `ampla_security/normalization/` — project, security extraction, and
+  AuthStore normalization
+- `ampla_security/reporting/` — HTML and text reports
+- `ampla_security/cli/` — pipeline command
+- `ampla_security/testing/` — pytest suite, parity harness, fixtures, and
+  golden outputs
+- `src/StyleSheets/` — original XSLT behavioral references
+- `docs/` — current usage, pipeline, and validation documentation
 
----
+## License and provenance
 
-## **Compatibility**
-
-- Python **3.10+**  
-- lxml 4.6+  
-- Linux, macOS, Windows  
-
----
-
-## **Documentation**
-
-- `docs/SECURITY_ANALYSIS.md`  
-- `docs/SECURITY_PIPELINE.md`  
-- `docs/NORMALIZATION_REFERENCE.md`  
-- `docs/DEVELOPER_GUIDE.md`  
-- `docs/VALIDATION_REPORT.md`  
-
----
-
-## **Roadmap**
-
-- Extended rule library  
-- REST API  
-- Database backend  
-- Multi‑project analysis  
-- Performance improvements  
+This project migrates the workflow of the MIT-licensed
+[Ampla Security Analysis project](https://github.com/Ampla/SecurityAnalysis).
+The Python implementation preserves behavioral compatibility with the original
+XSLT pipeline as its migration goal. The original stylesheets remain in this
+repository as references for tests and output comparisons. Copyright and
+license information is in [LICENSE](LICENSE); the license text is unchanged.
+The current file ends with a literal ellipsis and needs review before
+redistribution.

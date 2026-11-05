@@ -1,159 +1,70 @@
-# **Security Pipeline Guide**
+# Security Pipeline Guide
 
-## Pipeline
-```
-Project XML
- → Project Normalization
- → Security Extraction
- → AuthStore Normalization
- → Rule Application
- → HTML Report
-```
+## Processing stages
 
----
+The CLI runs these stages in order:
 
-## Phase 1 — Project Normalization  
-**Module:** `normalization/project_normalizer.py`
+1. Parse project and AuthStore XML.
+2. Normalize project items, properties, classes, expressions, and defaults.
+3. Extract project users, identities, and scopes.
+4. Normalize AuthStore operations, roles, members, and scopes using extracted
+   project security data.
+5. Render the Security HTML report.
+6. Render the roles and assignments text reports.
+7. Write three XML intermediates and three reports to the selected output
+   directory.
 
-**Functions**
-- Normalize project root, references, types, items, properties  
-- Compute: `hash`, `fullName`, `DisplayOrder`  
-- Apply transforms:
-  - normalize_cycle_manager_cycles  
-  - normalize_resolver_item  
-  - normalize_historical_field_expression  
-  - normalize_home_property  
-  - normalize_favorites_property  
+## Run the pipeline
 
-**Excluded properties**
-- RunState  
-- DisplayOrderIndex  
-- DisplayOrderGroup  
-- PropertyMaskSets  
-- DataSource  
-- Definition  
-
----
-
-## Phase 2 — Security Extraction  
-**Module:** `normalization/project_security_extractor.py`
-
-**Extracts**
-- Users  
-- Scopes  
-- Identity/SID data  
-- SecurityID values  
-
----
-
-## Phase 3 — AuthStore Normalization  
-**Module:** `normalization/authstore_normalizer.py`
-
-**Functions**
-- Normalize AzAdminManager  
-- Normalize operations, roles, scopes, tasks  
-- Resolve accounts (Windows, Ampla, well‑known SIDs)  
-- Link AuthStore data to project security data  
-
----
-
-## Phase 4 — Rule Application  
-**Module:** `engine/`
-
-**Categories**
-- Authorization  
-- Project  
-- Common  
-- Document  
-
-**Dispatcher**
-- Priority‑based  
-- Pattern‑based  
-- Ordered execution  
-
----
-
-## Phase 5 — HTML Report  
-**Module:** `reporting/html_reporter.py`
-
-**Contents**
-- Findings summary  
-- Roles  
-- Scopes  
-- Permissions  
-- User status  
-
----
-
-## CLI
-```
+```sh
 python -m ampla_security.cli.analyze \
   --project project.xml \
   --authstore authstore.xml \
-  --output report.html
+  --output-dir Output
 ```
 
-Options: `--normalize-only`, `--verbose`, `--help`
+Both input options are required. The output directory defaults to `Output`.
+The command returns a non-zero status when inputs cannot be read or parsed.
+Use `--help` for the supported options.
 
----
+Output artifact names:
 
-## Integration
+- `project.xml`
+- `project.security.xml`
+- `authstore.xml`
+- `Project.Security.html`
+- `Project.Security.Roles.txt`
+- `Project.Security.Assignments.txt`
 
-**Dispatcher**
-```python
-dispatcher.run("authorization")
+## Reports
+
+The HTML report contains the roles-by-operation matrix, valid and invalid
+scope tables, user details, and allowed, denied, and invalid assignments. The
+text reports provide the legacy roles and assignments views. Both report
+formats are generated from the normalized `Security` XML.
+
+See [Security Analysis](SECURITY_ANALYSIS.md) for report content and
+[Parity Validation](PARITY_VALIDATION_STRATEGY.md) for output comparison
+rules.
+
+## Test and parity commands
+
+Run all tests and coverage:
+
+```sh
+python -m pytest -q
 ```
 
-**Context**
-```python
-context.get_items_by_type("User")
+Run the XML parity validator:
+
+```sh
+python -m ampla_security.testing.golden_validator \
+  --project ampla_security/testing/fixtures/parity/project.xml \
+  --authstore ampla_security/testing/fixtures/parity/authstore.xml \
+  --project-root . \
+  --working-dir working/parity
 ```
 
-**Registry**
-```python
-registry.register_rule(category, rule, priority)
-```
-
----
-
-## Outputs
-- Normalized project XML  
-- Normalized AuthStore XML  
-- Extracted security data  
-- HTML report  
-
----
-
-## Tests
-- Functional tests: `testing/test_functional.py`  
-- Golden‑file tests: `testing/golden_validator.py`  
-
-Commands:
-```
-pytest -v
-pytest --cov=ampla_security
-python ampla_security/testing/golden_validator.py
-```
-
----
-
-## Performance
-- Full pipeline < 1s  
-
----
-
-## Differences from XSLT
-- SHA1 hashing  
-- Version‑based DisplayOrder  
-- Different intermediate formats  
-- More detailed errors  
-- Extensible architecture  
-
----
-
-## Future Work
-- More rules  
-- Plugin system  
-- Parallel rule execution  
-- Database integration  
-- REST API  
+The validator compares the three XML normalization stages. Dedicated pytest
+modules compare the HTML and text reports against the original XSLT stylesheets
+and checked-in goldens.

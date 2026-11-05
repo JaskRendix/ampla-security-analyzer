@@ -33,6 +33,9 @@ working/
 /normalized_project_phase_d.xml
 /security_report.html
 /test_report.html
+docs/archive/MIGRATION_HISTORY.md
+docs/FINAL_MIGRATION_ASSESSMENT.md
+docs/PARITY_VALIDATION_STRATEGY.md
 
 # Golden outputs (generated)
 golden/*.json

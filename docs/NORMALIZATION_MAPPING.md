@@ -30,6 +30,7 @@ to their Python function equivalents.
 | `match="Item[@id]/Property[@name='Definition']"` | **exclude_definition_property** |
 | `match="Item[@id]"` | **normalize_item** |
 | `name="addItemAttributes"` | **add_item_attributes** |
+| `name="addTranslation"` / `name="getTranslation"` | **add_translation** |
 | `name="addDefaultProperty"` | **add_default_property** |
 | `name="addPropertyDisplayOrder"` | **add_property_display_order** |
 | `match="node()"` | **copy_node** |
@@ -46,6 +47,11 @@ to their Python function equivalents.
 | `match="Item[@id]/Property[@name='HistoricalFieldExpression']/HistoricalExpressionConfig/ExpressionConfig[@format='']"` | **normalize_historical_field_expression** |
 | `match="Property[@name='Home']"` | **normalize_home_property** |
 | `match="Property[@name='Favorites']"` | **normalize_favorites_property** |
+| `match="Property[SOAP-ENV:Envelope]"` | **normalize_soap_property** |
+| `match="Property[@name='EquipmentTypes']"` | **normalize_equipment_types_property** |
+| `match="Property[contains(@name, 'Subscription')]"` | **normalize_subscriptions_property** |
+| `match="Property[SOAP-ENV:Envelope]` on OleDbAdapter items | **normalize_oledb_soap_property** |
+| `csvToItemLink` / subscription parsing templates | **normalize_equipment_types_property**, **normalize_subscriptions_property** |
 
 ---
 
@@ -77,7 +83,12 @@ to their Python function equivalents.
 ---
 
 ## **Notes**
-- Only templates that transform, filter, or extract data are included.  
-- Named templates map to standalone helpers.  
-- Exclusion templates map to explicit Python exclusion logic.  
-- This table is now a **migration spec**, not a narrative document.
+- Only templates that transform, filter, or extract data are included.
+- Named templates map to standalone helpers.
+- Exclusion templates map to explicit Python exclusion logic.
+- Translation loading is performed by `ProjectNormalizer._load_translations`;
+  translation lookup is applied while normalizing items and class definitions.
+- Special-property mapping also covers SOAP flattening, EquipmentTypes, and
+  subscription conversion.
+- This table records the implemented mappings; it does not imply byte-for-byte
+  identity where the parity strategy documents a justified difference.
