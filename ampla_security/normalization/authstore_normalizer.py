@@ -134,41 +134,74 @@ class AuthstoreNormalizer:
         normalized.set("name", operation_node.get("Name", ""))
         normalized.set("description", operation_node.get("Description", ""))
 
+        operation_links = self.root.xpath(
+            "//OperationLink[text() = $operation_id]",
+            operation_id=operation_node.get("Guid", ""),
+        )
+        role_links = []
+        for operation_link in operation_links:
+            role = operation_link.getparent()
+            if (
+                role is not None
+                and role.tag == "AzTask"
+                and role.get("RoleDefinition") == "True"
+                and role.get("Guid")
+            ):
+                role_links.append(role)
+
+        if role_links:
+            links = etree.SubElement(normalized, "Links")
+            for role in role_links:
+                links.append(self.add_role_link(role, {role.get("Guid", "")}))
+
         return normalized
 
-    def add_role_link(self, role_node: _Element, visited_roles: Any) -> _Element:
+    def add_role_link(
+        self, role_node: _Element, visited_roles: set[str] | None = None
+    ) -> _Element:
+        if visited_roles is None:
+            visited_roles = set()
+
         normalized = etree.Element("RoleLink")
+        normalized.set("name", role_node.get("Name", ""))
+        normalized.set("roleId", role_node.get("Guid", ""))
 
-        if role_node.get("Name"):
-            normalized.set("name", role_node.get("Name"))
-        if role_node.get("Guid"):
-            normalized.set("roleId", role_node.get("Guid"))
-
-        for task_link in role_node.xpath("TaskLink"):
-            normalized.append(self.normalize_task_link(task_link))
+        role_id = role_node.get("Guid", "")
+        for task_link in self.root.xpath(
+            "//TaskLink[text() = $role_id]",
+            role_id=role_id,
+        ):
+            parent_role = task_link.getparent()
+            if (
+                parent_role is None
+                or parent_role.tag != "AzTask"
+                or parent_role.get("RoleDefinition") != "True"
+            ):
+                continue
+            parent_role_id = parent_role.get("Guid", "")
+            if not parent_role_id or parent_role_id in visited_roles:
+                continue
+            normalized.append(
+                self.add_role_link(parent_role, visited_roles | {parent_role_id})
+            )
 
         return normalized
 
     def normalize_role(self, role_node: _Element) -> _Element:
         normalized = etree.Element("Role")
 
-        role_id = role_node.get("Guid") or role_node.get("roleId")
-        if role_id:
-            normalized.set("roleId", role_id)
+        task_link = role_node.findtext("TaskLink", default="")
+        tasks = self.root.xpath("//AzTask[@Guid = $guid]", guid=task_link)
+        task = tasks[0] if tasks else None
+        normalized.set("roleId", task.get("Guid", "") if task is not None else "")
+        normalized.set("name", task.get("Name", "") if task is not None else "")
+        normalized.set("description", role_node.get("Description", ""))
 
-        name = role_node.get("Name") or role_node.get("name")
-        if name:
-            normalized.set("name", name)
-
-        desc = role_node.get("Description") or role_node.get("description")
-        if desc:
-            normalized.set("description", desc)
-
-        for child in list(role_node):
-            if child.tag == "Member":
-                normalized.append(self.normalize_member(child))
-            else:
-                normalized.append(copy_node(child))
+        members = sorted(
+            role_node.xpath("Member"), key=lambda member: member.text or ""
+        )
+        for member in members:
+            normalized.append(self.normalize_member(member))
 
         return normalized
 
@@ -255,40 +288,48 @@ class AuthstoreNormalizer:
         for child in list(task_node):
             if child.tag == "TaskLink":
                 normalized.append(self.normalize_task_link(child))
-            elif child.tag == "OperationLink":
-                normalized.append(self.normalize_operation_link(child))
-            else:
-                normalized.append(copy_node(child))
+        operation_links = sorted(
+            task_node.xpath("OperationLink"), key=self._operation_link_sort_key
+        )
+        for operation_link in operation_links:
+            normalized.append(self.normalize_operation_link(operation_link))
 
         return normalized
 
     def normalize_task_link(self, task_link_node: _Element) -> _Element:
-        target_guid = (task_link_node.text or "").strip()
+        target_guid = task_link_node.text or ""
         normalized = etree.Element("RoleLink")
+        tasks = self.root.xpath("//AzTask[@Guid = $guid]", guid=target_guid)
+        role_node = tasks[0] if tasks else None
+        normalized.set(
+            "name", role_node.get("Name", "") if role_node is not None else ""
+        )
+        normalized.set(
+            "roleId", role_node.get("Guid", "") if role_node is not None else ""
+        )
 
-        role_node = self.root.xpath(f"//AzTask[@Guid='{target_guid}']")
-        if role_node:
-            role_node = role_node[0]
-
-            if role_node.get("Name"):
-                normalized.set("name", role_node.get("Name"))
-            if role_node.get("Guid"):
-                normalized.set("roleId", role_node.get("Guid"))
-
-            for child in role_node.xpath("OperationLink"):
-                normalized.append(self.normalize_operation_link(child))
+        if role_node is not None:
+            for operation_link in sorted(
+                role_node.xpath("OperationLink"), key=self._operation_link_sort_key
+            ):
+                normalized.append(self.normalize_operation_link(operation_link))
 
         return normalized
 
-    def normalize_operation_link(self, operation_link_node: _Element) -> _Element:
-        operation_id = (operation_link_node.text or "").strip()
-        normalized = etree.Element("Operation")
+    def _operation_link_sort_key(self, operation_link: _Element) -> tuple[int, float]:
+        operation_id = operation_link.text or ""
+        operations = self.root.xpath("//AzOperation[@Guid = $guid]", guid=operation_id)
+        value = operations[0].findtext("OperationID") if operations else None
+        try:
+            return (1, float(value)) if value is not None else (0, 0)
+        except ValueError:
+            return (0, 0)
 
-        operation_node = self.root.xpath(f"//AzOperation[@Guid='{operation_id}']")
-        if operation_node:
-            operation_node = operation_node[0]
-            if operation_node.get("Name"):
-                normalized.set("name", operation_node.get("Name"))
+    def normalize_operation_link(self, operation_link_node: _Element) -> _Element:
+        operation_id = operation_link_node.text or ""
+        normalized = etree.Element("Operation")
+        operations = self.root.xpath("//AzOperation[@Guid = $guid]", guid=operation_id)
+        normalized.set("name", operations[0].get("Name", "") if operations else "")
 
         return normalized
 
