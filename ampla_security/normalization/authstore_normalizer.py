@@ -78,6 +78,7 @@ class AuthstoreNormalizer:
             global_scope.append(self.normalize_role(role))
         for scope in app_node.xpath("AzScope"):
             scopes.append(self.normalize_scope(scope))
+        self.add_project_scopes(app_node, scopes)
 
         users = etree.SubElement(normalized, "Users")
         if self.project_security_root is not None:
@@ -86,6 +87,24 @@ class AuthstoreNormalizer:
                 users.append(self.normalize_project_user(user))
 
         return normalized
+
+    def add_project_scopes(self, app_node: _Element, scopes_node: _Element) -> None:
+        if self.project_security_root is None:
+            return
+
+        authstore_scope_ids = set(app_node.xpath("AzScope/@Name"))
+        for project_scope in self.project_security_root.xpath("./Scopes/Scope[@id]"):
+            scope_id = project_scope.get("scopeId", "")
+            if scope_id in authstore_scope_ids:
+                continue
+
+            missing_scope = etree.SubElement(scopes_node, "Scope")
+            missing_scope.set("name", project_scope.get("fullName", ""))
+            missing_scope.set("scopeId", scope_id)
+            missing_scope.set(
+                "invalid",
+                "Warning: Scope does not exist in Authorization Store (AuthStore.xml)",
+            )
 
     def _operation_sort_key(self, operation: _Element) -> tuple[int, float]:
         value = operation.findtext("OperationID")
