@@ -5,10 +5,6 @@ the original XSLT orchestration with a Python command-line pipeline while
 retaining the XSLT stylesheets as behavioral references and parity-test
 fixtures.
 
-The migration is complete for the behaviors recorded in the migration history.
-The project is in maintenance mode. The estimated migration completeness is
-90%; this is a qualitative assessment, not a weighted parity measurement.
-
 ## What the system does
 
 The pipeline accepts a project XML file and an AuthStore XML file. It:
@@ -129,7 +125,4 @@ This project migrates the workflow of the MIT-licensed
 [Ampla Security Analysis project](https://github.com/Ampla/SecurityAnalysis).
 The Python implementation preserves behavioral compatibility with the original
 XSLT pipeline as its migration goal. The original stylesheets remain in this
-repository as references for tests and output comparisons. Copyright and
-license information is in [LICENSE](LICENSE); the license text is unchanged.
-The current file ends with a literal ellipsis and needs review before
-redistribution.
+repository as references for tests and output comparisons.
