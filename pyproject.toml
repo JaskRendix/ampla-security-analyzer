@@ -4,8 +4,16 @@ version = "1.0.0"
 description = "Ampla Security Analysis Engine"
 readme = "README.md"
 requires-python = ">=3.10"
+
 authors = [
     { name = "Giorgio" }
+]
+
+license = { file = "LICENSE" }
+
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
 ]
 
 dependencies = [
