@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -75,13 +78,7 @@ class HtmlReporter:
         return "\n".join(lines)
 
     def _escape(self, value: str) -> str:
-        return (
-            value.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;")
-            .replace("'", "&#39;")
-        )
+        return escape(value, quote=True)
 
     def _to_text(self, value: Any) -> str:
         return "" if value is None else str(value)
